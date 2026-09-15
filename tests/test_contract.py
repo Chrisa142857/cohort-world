@@ -1,16 +1,17 @@
 """The freeze gate: what must hold for RL training to be run against this environment unchanged.
 
-`tests/test_reward.py` pins the DERIVATION -- the numbers `docs/reward-spec.md` argues for. This
-file pins the WIRING and the training precondition, which is a different question: not "is the
-reward the one we designed" but "does the reward this code actually produces carry a gradient, on
-the right key, for every task".
+`tests/test_reward.py` pins the DERIVATION -- the numbers the reward definition in Section 3 of the
+paper argues for. This file pins the WIRING and the training precondition, which is a different
+question: not "is the reward the one we designed" but "does the reward this code actually produces
+carry a gradient, on the right key, for every task".
 
-D1 was not a wrong number; it was a CONSTANT one -- 120 T1 rollouts on 120 different items all
-scored -1.0, because `vf.Taskset`'s first type parameter rebuilds the served task as the taskset's
-declared class and `LocateTask` was being rebuilt as `InternalTask` and scored by T3's rubric. GRPO
-normalises advantage within a group, so a constant reward is an advantage of exactly zero: the run
-looks healthy, burns a GPU for hours, and teaches the policy nothing. Nothing in the harness reports
-it. `degenerate` below is the detector, and `test_the_degeneracy_detector_can_fail` is its control.
+The wiring defect was not a wrong number; it was a CONSTANT one -- 120 T1 rollouts on 120 different
+items all scored -1.0, because `vf.Taskset`'s first type parameter rebuilds the served task as the
+taskset's declared class and `LocateTask` was being rebuilt as `InternalTask` and scored by T3's
+rubric. GRPO normalises advantage within a group, so a constant reward is an advantage of exactly
+zero: the run looks healthy, burns a GPU for hours, and teaches the policy nothing. Nothing in the
+harness reports it. `degenerate` below is the detector, and `test_the_degeneracy_detector_can_fail`
+is its control.
 
 Everything here is GPU-free.
 """
@@ -67,10 +68,10 @@ def degenerate(rewards) -> str | None:
 
 
 def test_the_degeneracy_detector_can_fail():
-    """T05, the positive control. A guard nobody has watched fail is the bug class this repo keeps
+    """The positive control. A guard nobody has watched fail is the bug class this repo keeps
     paying for -- so the detector is exercised on a group it MUST reject and on one it must accept,
     in the same test, before anything downstream is allowed to trust a green result."""
-    assert degenerate([-1.0] * 120) is not None                  # D1, exactly as it happened
+    assert degenerate([-1.0] * 120) is not None                  # the wiring defect, exactly as it happened
     assert degenerate([0.0] * 8) is not None
     assert degenerate([0.0] * 4 + [1.0] * 4) is not None         # non-constant, still 2 values
     assert degenerate([i / 8 for i in range(8)]) is None
@@ -116,9 +117,9 @@ def test_the_null_policy_branch_can_fail():
 @pytest.mark.parametrize("cls,key", [(RateTask, "rate"), (LocateTask, "locate"),
                                      (DeltaTask, "delta"), (PhenoCalTask, "rate")])
 def test_each_task_declares_exactly_one_reward_and_it_is_the_expected_one(cls, key):
-    """T01. `@vf.reward` sets a `reward` attribute on the method; the served worker reads it off the
-    task class it rebuilt. A task scored under another task's key is D1's visible symptom -- the D1
-    records carried `crps` and no `locate` -- so the key is asserted, not assumed."""
+    """`@vf.reward` sets a `reward` attribute on the method; the served worker reads it off the
+    task class it rebuilt. A task scored under another task's key is the wiring defect's visible
+    symptom -- its records carried `crps` and no `locate` -- so the key is asserted, not assumed."""
     names = sorted(n for n in dir(cls) if getattr(getattr(cls, n, None), "reward", False))
     assert names == [key]
 
@@ -148,7 +149,7 @@ def tool_msg(name, payload):
     Stub([tool_msg("cw_look", {"state_id": "C2:abc", "hit": True})]),
 ])
 def test_there_is_no_terminal_state_without_a_scored_report(trace):
-    """T31/D4, the structural half. This is what makes "the commit is a gate with no gradient behind
+    """The mandatory report, structural half. This is what makes "the commit is a gate with no gradient behind
     it" unreintroducible: there is no input to the ladder that yields an empty report, so there is no
     branch left in which a score can be a constant standing in for silence. `crps` raises on an empty
     report rather than returning a sentinel, so a regression here is loud."""
@@ -175,8 +176,9 @@ def test_the_floor_is_reached_only_when_the_agent_neither_stated_nor_read():
 
 
 def test_a_malformed_commit_is_flagged_and_still_scored():
-    """D2 + D4 together. The report is rejected AS A WHOLE (no dropping, no clamping) and the episode
-    still gets a score off the rung below -- rejecting the payload must not resurrect the constant."""
+    """Whole-report rejection and the mandatory report together. The report is rejected AS A WHOLE
+    (no dropping, no clamping) and the episode still gets a score off the rung below -- rejecting
+    the payload must not resurrect the constant."""
     tr = Stub([tool_msg("cw_look", {"state_id": "C2:abc"}),
                tool_msg("cw_observe", {"status": "published", "rate": 0.031,
                                        "disease": "K5", "horizon": 5}),
@@ -197,7 +199,7 @@ def test_a_malformed_commit_is_flagged_and_still_scored():
     ("ANSWER: .05 .06 .07 .08 .09", [0.05, 0.06, 0.07, 0.08, 0.09]),
 ])
 def test_a_percent_sign_is_the_only_thing_that_rescales(text, expect):
-    """The `%` half of D2, and the 100x hole it closes.
+    """The `%` half of the no-rescale rule, and the 100x hole it closes.
 
     `commit` accepts a string so that a payload FastMCP would have rejected still reaches the trace,
     and its docstring cites `'[0., .6%, .8%, .8%, .8%]'` as one it rescues. That string parsed to
@@ -205,7 +207,7 @@ def test_a_percent_sign_is_the_only_thing_that_rescales(text, expect):
     `report_level = stated_commit`, `report_malformed = 0`. `well_formed`'s [0, 1] rule catches
     `[2%, ..., 6%]` and by construction CANNOT catch a percent convention already below 1.
 
-    Reading `%` is not the "clever percent heuristic" D2 forbids -- it does not infer a convention
+    Reading `%` is not the "clever percent heuristic" the parse rule forbids -- it does not infer a convention
     from the magnitudes, it reads the unit the model wrote. Exercised on the whole archive before it
     shipped: of 2,753 answer strings, 63 parse differently and 8 flip from rejected to accepted, all
     8 being genuine five-value percent reports (`[2%, 4%, 5%, 7%, 10%]`); none flips the other way.
@@ -219,7 +221,7 @@ def test_absence_of_a_percent_sign_never_rescales():
     """The other half, and the one that keeps the rule from becoming a heuristic. `[1, 2, 3, 4, 5]`
     against a truth of 0.0084 is unambiguously 1-5% to a human and is STILL rejected whole, because
     18 of the 20 archived out-of-range payloads are mixed-scale runaways a magnitude rule gets
-    wrong. If this ever loosens, D2 is back."""
+    wrong. If this ever loosens, the percent hole is back."""
     assert R.parse_values("[1, 2, 3, 4, 5]") == [1.0, 2.0, 3.0, 4.0, 5.0]
     assert not R.well_formed([1.0, 2.0, 3.0, 4.0, 5.0])
     assert R.parse_report("[0.005, 0.006, 0.007, 1.0, 2.0]") == []
@@ -229,7 +231,7 @@ def test_absence_of_a_percent_sign_never_rescales():
 
 @pytest.mark.asyncio
 async def test_a_commit_is_free_and_a_failed_move_is_not():
-    """T28. The commit used to cost budget, so a commit made on the last allowed call pushed `_spent`
+    """The commit used to cost budget, so a commit made on the last allowed call pushed `_spent`
     to BUDGET, `out_of_budget` fired on the same step, and the episode ended before the commit's
     result was appended: **44 of 120 rollouts in one run produced a well-formed answer that was thrown
     away.** Ending the episode is what commit is FOR."""
@@ -241,7 +243,7 @@ async def test_a_commit_is_free_and_a_failed_move_is_not():
 
 @pytest.mark.asyncio
 async def test_navigation_is_refused_at_budget_but_the_answer_is_not():
-    """T29/D4. The stop used to end the rollout the instant the budget ran out -- in one run that was
+    """The stop used to end the rollout the instant the budget ran out -- in one run that was
     11 of the first 26 rollouts taking a flat worst case that the agent never chose. Refusing further
     NAVIGATION while leaving turns to answer measures estimation, not patience."""
     from cohortworld_env.toolset import CohortWorldToolset, CohortWorldToolsetConfig
@@ -264,7 +266,7 @@ async def test_navigation_is_refused_at_budget_but_the_answer_is_not():
 
 @pytest.mark.asyncio
 async def test_every_tool_result_shows_the_remaining_budget():
-    """T30. Over 120 rollouts the agent burned a mean 18.77 of 20 calls and 109 of 120 never answered
+    """Over 120 rollouts the agent burned a mean 18.77 of 20 calls and 109 of 120 never answered
     at all. An agent cannot budget what it cannot see."""
     from cohortworld_env.toolset import CohortWorldToolset, CohortWorldToolsetConfig
     ts = CohortWorldToolset(CohortWorldToolsetConfig(budget=5))
@@ -299,7 +301,7 @@ def _rate_task(disease, horizon, truth):
 
 
 def test_R_is_invariant_to_the_spread_of_the_report():
-    """T21, and the single property the whole `ALPHA * R` design rests on (reward-spec 2.2).
+    """The single property the whole `ALPHA * R` design rests on.
 
     `R` may depend on the report's LOCATION and on the outcome, never on its DISPERSION. If it ever
     does, `dR/d(spread)` is non-zero, the added term enters the coordinate CRPS elicits, and the
@@ -350,12 +352,13 @@ def _trivial_policies():
 
 
 def test_alpha_makes_competence_beat_every_zero_information_policy(unseen_items, monkeypatch):
-    """D5 on T3, stated as the property that actually matters and measured on the real item set.
+    """The degenerate optimum on T3, stated as the property that actually matters and measured on the
+    real item set.
 
     Prop. 9's degeneracy is a claim about the reward's ARGMAX: under a pure proper score a policy can
     gain by degrading accuracy and honestly reporting the degradation. The check is therefore
     "oracle vs the best trivial policy", not "the current model vs the best trivial policy" -- the
-    second is a statement about the MODEL, and conflating the two is what made reward-spec 2.5's
+    second is a statement about the MODEL, and conflating the two is what made an earlier
     alpha bound read as unsatisfiable in the adversarial review.
 
     On the 304 internal unseen items the competence margin (oracle minus the best of four
@@ -379,7 +382,7 @@ def test_alpha_makes_competence_beat_every_zero_information_policy(unseen_items,
 # --------------------------------------------------------------------------- wiring hazards
 
 def test_every_module_level_path_is_absolute_from_a_foreign_cwd():
-    """T42. A relative default path has killed two runs here (CW_SYS, then legal_moves) and the
+    """A relative default path has killed two runs here (CW_SYS, then legal_moves) and the
     tool-server subprocess makes it unusually easy to reintroduce: verifiers chdirs the runtime into
     a cache directory, so a path that resolves in the repo root resolves to nothing at rollout time
     and the failure surfaces as an unrelated-looking ToolsetError on every rollout.
@@ -406,10 +409,10 @@ def test_every_module_level_path_is_absolute_from_a_foreign_cwd():
         EXTERNAL = {
             # UKB PhenoCal's published panel: another project, read-only, and its official split and
             # leaderboard were produced on exactly those bytes. There is no copy to put in this repo;
-            # it is declared here and in docs/ENVIRONMENT_SPEC.md rather than left to look like a bug.
+            # it is declared here rather than left to look like a bug.
             "cohortworld_phenocal.taskset.PHENOCAL",
-            # An item root outside the checkout (the released item set), hashed into every run's inputs.txt by
-            # newrun.sh and named in config.yaml by CONSTANTS()["items"].
+            # An item root outside the checkout (the released item set), hashed into every run's inputs.txt
+            # and named in config.yaml by CONSTANTS()["items"].
             "cohortworld_env.internal.ITEMS",
         }
         bad = []
@@ -467,7 +470,7 @@ def test_the_path_checker_above_can_actually_fail():
 
 
 def test_the_packages_read_the_checkout_they_are_in_and_not_the_one_they_were_written_in(tmp_path):
-    """T42's blind spot, and the reason a fresh clone read two repositories at once.
+    """The absolute-path test's blind spot, and the reason a fresh clone read two repositories at once.
 
     The test above cannot see a path hardcoded to the author's checkout while it is RUNNING in that
     checkout: the string is absolute and it is inside this
@@ -509,7 +512,7 @@ def test_the_packages_read_the_checkout_they_are_in_and_not_the_one_they_were_wr
 
 @pytest.mark.asyncio
 async def test_setup_task_binds_the_lattice_to_the_items_own_version():
-    """T40. `Task.toolsets(config)` is handed a TaskConfig that carries no `version`, so the toolset
+    """`Task.toolsets(config)` is handed a TaskConfig that carries no `version`, so the toolset
     starts on its default lattice and only `setup_task` can correct it. When it did not, a C2
     question was answered inside the C1 lattice -- `no disease matching 'injury / poisoning [T8]' in
     the C1 disease table` -- and the agent burned its whole budget hunting a cohort that could not
@@ -525,7 +528,7 @@ async def test_setup_task_binds_the_lattice_to_the_items_own_version():
 
 @pytest.mark.skipif(not os.path.isdir(os.path.join(REPO, 'official')), reason='needs official/ inside this checkout to hide a states file from')
 def test_setup_task_refuses_the_wrong_lattice_when_the_items_own_is_missing(tmp_path):
-    """T40's silent half, and the last of the "a reward that depends on which files happen to exist"
+    """The lattice binding's silent half, and the last of the "a reward that depends on which files happen to exist"
     family. An earlier fix made a missing panel loud at SCORING time (`reward.dist` / `entry_cohort`
     raise) and left the ROLLOUT side quiet: `setup_task` did `if lat is not None: self.lat = lat`, so
     an item whose version had no states file kept whatever lattice the toolset was built with.
@@ -537,7 +540,7 @@ def test_setup_task_refuses_the_wrong_lattice_when_the_items_own_is_missing(tmp_
     `entry_cohort`; T3's reward never touches the lattice, so nothing anywhere could notice.
 
     Only a PARTIAL panel gets in -- a wholly absent one raises in `Lattice.__init__` -- which is why
-    it survived the freeze, and why §9 could claim "a missing panel is now loud" and be wrong.
+    it survived the freeze, and why an earlier write-up could claim "a missing panel is now loud" and be wrong.
 
     A symlink farm, so no panel data is copied and `official/` is never touched. Run in a subprocess
     because the check is about what the process resolves `CW_PANEL` to.
@@ -922,7 +925,7 @@ def test_every_item_cohort_has_a_generalising_move():
 @pytest.mark.slow
 @pytest.mark.parametrize("version", ["C1", "C2", "default"])
 def test_move_ids_are_unique_within_a_cohort(version):
-    """T38. The served id used to be built from the axis and code alone, so two moves that differed
+    """The served id used to be built from the axis and code alone, so two moves that differed
     only in destination collided -- 46 ids on one state -- and `move` resolved whichever came first.
     The destination is in the id now (`bnf.add.0103->C2:8590...`), which is what makes it unique."""
     from cohortworld_env import legal_moves as LM
@@ -953,9 +956,9 @@ def commit_call_msg(rates):
 
 
 def test_a_commit_is_read_from_the_call_when_its_result_never_lands():
-    """The regression only a LIVE run could produce, and the reason Part B exists.
+    """The regression only a LIVE run could produce.
 
-    N9 moved the `committed` stop onto the assistant's tool CALL, because reading the commit's RESULT
+    A fix moved the `committed` stop onto the assistant's tool CALL, because reading the commit's RESULT
     made it fire a turn late or never. But verifiers holds a tool result in
     `Session.handle_tool`'s `prepared_tool_results` until the NEXT model request, and after a stop
     there is no next request -- so the fix removed the commit result from the trace of every healthy
@@ -998,7 +1001,7 @@ def test_a_serialised_score_memo_is_never_reused_across_processes():
     "a result matching your prediction gets less scrutiny".
 
     Rollouts recorded before `_memo` reached a serialised field carry no such entry, which is why the
-    offline rescoring done for D1 was sound. The guard
+    offline rescoring done for the wiring defect was sound. The guard
     is a per-process token: an entry this process did not write is ignored and recomputed, and the
     stale entry is left in place rather than deleted, so reading an archive never edits it.
     """

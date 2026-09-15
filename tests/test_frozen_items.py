@@ -4,12 +4,12 @@ ENV_VERSION pins the item ROOT: `internal.ITEMS` is inside the hashed semantic s
 repointing it moves `semantic_hash()` and `test_the_version_names_the_code_it_ships_with` goes red
 until the table records the new version. That pins the NAME. It does not pin the CONTENT -- a rebuild
 written back over the same directory changes every answer in the benchmark and moves no hash the
-environment checks, which is the D3 failure one level down: the version would be unchanged and
+environment checks, which is unrecorded constant drift one level down: the version would be unchanged and
 nothing on disk would say the numbers are not comparable.
 
 So the content is pinned here, by md5 and by line count, together with the two properties the release
 depends on and that a rebuild is most likely to break quietly: k-anonymity on every published label,
-and cohort-disjoint splits. See docs/ENVIRONMENT_SPEC.md.
+and cohort-disjoint splits.
 
 Each of the four was verified to FAIL by mutating the invariant it names -- a wrong hash, a k of 9, a
 cohort moved across two splits, a private cohort planted in train -- because a freeze test that
@@ -47,8 +47,8 @@ HASHES = {
     "t3_rate_unseen.jsonl":            ("ee4b68a9b18bd476563c8a5770d6562c",   943),
     "t3_rate_unseen_subject.jsonl":    ("c82181e4687073587a2844f02c7d79cf",  4249),
 }
-"""The eleven files, by content. `gen/newrun.sh` folds the same eleven md5s into one `items_md5`
-line in every run's config.yaml, so a run directory names the item set as precisely as this does."""
+"""The eleven files, by content. The same eleven md5s fold into one `items_md5` line in every run's
+config.yaml, so a run directory names the item set as precisely as this does."""
 
 _CACHE: dict = {}
 
@@ -62,7 +62,7 @@ def rows(name):
 
 def cohort(r):
     """The disjointness unit: the released cohort the item was rendered from. T2 renders an EDGE,
-    so its rows carry `start_cohort` instead. Same unit either way -- `gen/verify_freeze.py`."""
+    so its rows carry `start_cohort` instead. Same unit either way."""
     return r["source"]["cohort"] or r["source"]["start_cohort"]
 
 
@@ -83,7 +83,7 @@ def test_the_environment_reads_the_frozen_item_set_and_its_content_is_the_frozen
 @pytest.mark.parametrize("task", PUBLISHED)
 def test_every_published_label_is_k_anonymous(task):
     """k >= 10 on every label of every PUBLISHED item -- the release rule the whole rendering spirit
-    exists to keep (docs/item-rendering-spirit.md principle 1). The private `unseen_subject` files
+    exists to keep. The private `unseen_subject` files
     are excluded by construction, not by exception: they carry k=1 because each row IS one person,
     which is exactly why they are never published.
 
@@ -96,7 +96,7 @@ def test_every_published_label_is_k_anonymous(task):
 
 
 def test_the_published_splits_are_cohort_disjoint():
-    """Profile disjointness, the only holdout the published splits claim (docs/ENVIRONMENT_SPEC.md 1).
+    """Profile disjointness, the only holdout the published splits claim.
     Measured 0 on every pair of every task; asserted as 0, not as "small", because the split
     function hashes the cohort's own state_id, so any overlap at all is a broken split function
     rather than a tolerable rate."""

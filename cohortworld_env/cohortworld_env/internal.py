@@ -493,7 +493,7 @@ class RateTask(_CWTask, vf.Task[RateData, vf.State, RateTaskConfig]):
 
         Here for the same reason the `cohort_think` process metrics above are: without it the ONE term `cohort_think_cal`
         pays for the process never reaches `monitors/file/metrics.jsonl`, so the smoke gate
-        (gen/cohort_think_gate.py G2) and the step_25 readouts of the spec would be measuring
+        (the format gate) and the step-25 readouts would be measuring
         `think_edge` -- a diagnostic that is no longer paid -- while the run was learning from
         something else. Reporting only: no reward value moves."""
         return float(self._score(trace).get("cal_delta", 0.0))
@@ -759,7 +759,7 @@ _CODE_IN_BRACKETS = _re.compile(r"\s*\[[A-Z0-9]{1,6}\]")
 
 
 def cohort_think_question(patient: str, disease_words: str, horizon, sex: str) -> str:
-    """THE question, for both stages. `gen/sft/build_cohort_think_dataset.py` imports this rather than
+    """THE question, for both stages. The SFT dataset builder imports this rather than
     carrying its own copy, because a second copy of a prompt is how the two stages drift apart.
 
     Byte-exact to the cold-start demonstration set, quirks included: the disease is named WITHOUT its code (the
@@ -1108,7 +1108,7 @@ class CohortWorldEnv(vf.SingleAgentEnv):
 
 # --------------------------------------------------------------------------- cell resampling
 ZERO_FRACTION = 0.5
-"""The zero / non-zero split of the drawn cell, reproducing `gen/render_spirit.py`'s `ZERO_FRACTION`.
+"""The zero / non-zero split of the drawn cell, reproducing `build/render_spirit.py`'s `ZERO_FRACTION`.
 
 Two copies of a rule drift, so `tests/test_frozen_items.py` asserts this value against the builder's
 own. Sampling uniformly from the published cells instead would be a different task: most cells are zero
@@ -1337,7 +1337,7 @@ class DeltaTaskset(vf.Taskset[DeltaTask, DeltaConfig]):
 
     Serving those items would not make the task hard, it would make it unanswerable -- and T2 has
     never been run, so nobody has yet been misled by them. Survivors: 125 train / 31 seen / 41 unseen.
-    **That is below the 120 rollouts the acceptance run needs, and the fix is `gen/build_items.py`
+    **That is below the 120 rollouts the acceptance run needs, and the fix is the item builder
     emitting edges whose lattice and outcome granularity agree, not a change here.** Until then, run
     the acceptance eval on `train`.
     """

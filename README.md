@@ -4,14 +4,14 @@
 
 CohortWorld is an interactive environment for language agents built from UK Biobank. Every state is a real, $k$-anonymous cohort keyed on a recorded history of diagnoses (ICD-10), procedures (OPCS-4) and prescriptions (BNF), and every cohort publishes the measured incidence of each disease over each follow-up horizon. An agent estimates one patient's risk by walking to a recorded group, reading its rate, changing one feature at a time and reading again, so its answer is a published number reached by a comparison it has stated rather than a prevalence recalled from pretraining.
 
-Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Models* (under review, ICLR 2027). Code, cohorts and benchmark are being organised for release in this repository; the layout below is the target and will settle over the next weeks.
+Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Models* (under review). Code is in this repository; the data is on HuggingFace, linked below.
 
 ## What is released
 
 | component | what it is | size |
 |---|---|---|
 | **CohortWorld environment** | the cohort lattice, four tools, tasks and rewards, served through [`verifiers`](https://github.com/PrimeIntellect-ai/verifiers) | 20,180 cohorts at three coding depths |
-| **CohortCal** | a calibration benchmark: written histories with a disease and horizon, answered with a percentage, scored against the recorded incidence | 31,784 unseen items over 9,704 cohorts disjoint from CohortWorld |
+| **CohortCal** | a calibration benchmark: written histories with a disease and horizon, answered with a percentage, scored against the recorded incidence | 70,378 items over 3,198 cohorts disjoint from CohortWorld, of which the 31,784 test items over 1,274 held-out cohorts are scored |
 | **CohortThink** | the diagnostic simulation inside the environment, with CohortMatch and CohortContrast read off its episodes | 16,770 / 880 / 943 items (train / seen / unseen) |
 | **CS-GRPO** | the training algorithm, a population reward for a population metric, as a plug-in to [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) | `train/` |
 | **Checkpoints** | Qwen3.5-9B and Qwen3.6-27B after the cold start and after CS-GRPO | to follow |
@@ -41,23 +41,27 @@ CM and CC are properties of the number, so a model with no tools is scored on th
 
 ## Quick start
 
-> The commands below describe the intended release layout. Until the reorganisation lands, paths may differ.
-
 ```bash
-# environment packages
-pip install -e cohortworld_env -e cohortworld_internal -e cohortworld_locate -e cohortworld_delta
+# environment packages, under the pinned dependency set the tests run with
+pip install -r requirements-freeze.txt
+pip install --no-deps -e cohortworld_env -e cohortworld_internal -e cohortworld_locate -e cohortworld_delta -e cohortworld_phenocal
+
+# data from Hugging Face (see data/README.md)
+hf download Chrisa142857/cohort-world --repo-type dataset --local-dir data
+export CW_PANEL=$PWD/data/official CW_OFFICIAL=$PWD/data/official CW_SIDECAR=$PWD/data/official
+export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 
 # serve a model (any OpenAI-compatible endpoint works; we use vLLM)
 vllm serve Qwen/Qwen3.5-9B --served-model-name qwen3.5-9b --port 8000 --enable-auto-tool-choice --tool-call-parser qwen3_xml
 
 # evaluate on the CohortThink unseen split
-eval @ configs/eval_cohortthink_unseen.toml -m qwen3.5-9b -c 64 -o outputs/
+reproduce/table4.sh http://localhost:8000/v1 qwen3.5-9b Qwen3.5-9B agent
 
-# score
-python gen/score_internal_t3.py --traces outputs/<run>/traces.jsonl --label qwen3.5-9b
+# Table 3
+reproduce/table3.sh http://localhost:8000/v1 qwen3.5-9b Qwen3.5-9B single
 ```
 
-Every path, split, threshold and seed is an argument; nothing is a literal in a script body. A run directory records the resolved config, the git SHA and working-tree state, input hashes and the frozen environment version, so any number in the paper traces back to the directory that produced it.
+Every path, split, threshold and seed is an argument; nothing is a literal in a script body. Each call writes `outputs/<table>_<label>/` with the resolved evaluation config, the traces and the scored numbers, so a number can be traced to the config and traces that produced it (`reproduce/README.md`).
 
 ## Training
 
@@ -65,7 +69,24 @@ Every path, split, threshold and seed is an argument; nothing is a literal in a 
 
 ## Repository layout
 
-TODO, the code and data are being organised for release.
+```
+cohortworld_env/        lattice, tools, rewards, tasks (ENV 7.6.3)
+cohortworld_internal/   CohortThink taskset
+cohortworld_locate/     CohortMatch taskset
+cohortworld_delta/      CohortContrast taskset
+cohortworld_phenocal/   CohortCal-in-CohortWorld taskset
+configs/                the two evaluation configs the tables ran with
+reproduce/              table3.sh, table4.sh and their README
+gen/                    scorers and serving helpers the entry points import
+build/                  the collection and item builders, for provenance (need UK Biobank access to run)
+prompts/                every prompt the paper used
+train/                  CS-GRPO as a prime-rl plug-in, patch and run configs
+tests/                  contract tests for the environment and rewards
+tools/                  the release gate
+data/                   MANIFEST of the dataset on HuggingFace
+```
+
+Data: https://huggingface.co/datasets/Chrisa142857/cohort-world (cohorts, CohortCal, task items, SFT demonstrations).
 
 ## Ethics and scope
 
@@ -84,4 +105,4 @@ This work uses UK Biobank under an approved application. A number produced here 
 
 ## License
 
-Code: TODO. Cohorts and benchmark: released under the terms permitted by the UK Biobank data use agreement; see `official/LICENSE` (to follow).
+Code: RELEASE-TODO. Cohorts and benchmark: released under the terms permitted by the UK Biobank data use agreement; the licence is stated on the Hugging Face dataset card.

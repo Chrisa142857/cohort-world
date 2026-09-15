@@ -8,7 +8,7 @@ CW=/work/USERS/ziquanw/cohortworld
 OUT=$CW/rebuild/official_new
 PRIV=/work/USERS/ziquanw/cohortworld_private/rebuild_new
 mkdir -p "$OUT" "$PRIV/augment"
-exec $CW/.venv/bin/python $CW/gen/OK__build_cohortworld_env.py \
+exec $CW/.venv/bin/python $CW/build/OK__build_cohortworld_env.py \
   --version "$V" --workers "$W" \
   --hx /ram/USERS/ziquanw/digitaltwinreward/ukb_qa_brain/output_panel/cohortworld_hx_alldates.pkl \
   --inter /ram/USERS/ziquanw/digitaltwinreward/ukb_qa_brain/output_panel/panel_intermediate.pkl \

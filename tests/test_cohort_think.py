@@ -327,7 +327,7 @@ def test_cal_leaves_base_and_every_existing_variant_byte_identical():
 
 
 def test_cal_returns_cohort_think_keys_plus_its_own():
-    """internal.RateTask's think_* metrics and gen/cohort_think_gate.py read these keys off the
+    """internal.RateTask's think_* metrics and the process gate read these keys off the
     score dict; a variant that dropped them would fail the process gate for an unrelated reason."""
     who, dis, hor, y, e = _fixture_item()
     msgs = _episode(dis, hor, e, e * 1.5, "<cohort-think>I expect +0.001</cohort-think>")
@@ -671,7 +671,7 @@ def test_cal_pays_w_move_only_for_an_accepted_move():
 
 
 def test_cal_nomove_floor_is_disabled_but_the_code_path_works(monkeypatch):
-    """The floor was SWEPT (spec §9) and DISABLED: at every value that made the non-mover advantage
+    """The floor was SWEPT and DISABLED: at every value that made the non-mover advantage
     non-positive it cost 3-4x more proxy slope than the W_MOVE payment. `None` is the off switch, and
     the branch is exercised here so the constant is not a value nobody can turn on."""
     who, dis, hor, y, e = _fixture_item()

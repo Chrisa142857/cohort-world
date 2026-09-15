@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-"""T2 under `docs/item-rendering-spirit.md`: the rendering, the age conflict, and the zoom dial.
+"""T2 under the item-rendering spirit: the rendering, the age conflict, and the zoom dial.
+
+The spirit: an item is its target cohort's own released description, age band de-grouped, degraded
+only by dials the agent can invert (A: mask an axis; B: zoom, i.e. coarsen a code).
 
 CPU only. Reads the frozen environment and the pooled edge table; edits neither. Reuses
-`gen/t2_ceiling.py` for every policy and every reward (so the ladder here IS the published ladder)
-and `gen/t2_supply.py` for the answerable-supply scan.
+`build/t2_ceiling.py` for every policy and every reward (so the ladder here IS the published ladder)
+and an answerable-supply scan.
 
 Four questions, in the order the spirit forces them:
 
@@ -30,8 +33,8 @@ Four questions, in the order the spirit forces them:
               operation's `code`) is not the same move: it makes several edges consistent with the
               item, and the label is well posed only if they agree. Measured on the same sample.
 
-Run:  .venv/bin/python gen/t2_spirit.py --selfcheck
-      .venv/bin/python gen/t2_spirit.py --out <rundir>
+Run:  .venv/bin/python build/t2_spirit.py --selfcheck
+      .venv/bin/python build/t2_spirit.py --out <rundir>
 """
 import argparse, collections, json, os, random, statistics, sys
 
@@ -51,7 +54,7 @@ SPLITS = ("train", "seen", "unseen")
 
 
 def split_of(sid):
-    """`gen/build_items.py:split_of` with the default empty salt. Copied, not imported: the item
+    """The item builder's `split_of` with the default empty salt. Copied, not imported: the item
     builder is not a library and importing it runs its module-level panel load. --selfcheck asserts
     it reproduces the split of all 625 shipped T2 items."""
     import hashlib
@@ -60,7 +63,7 @@ def split_of(sid):
 
 BOOT, SEED = T.BOOT, T.SEED
 ZOOM_OPS = ("zoom_coarser", "zoom_finer")
-# The number the spirit has to beat, measured by `gen/t2_ceiling.py` on the shipped unseen split (n=118).
+# The number the spirit has to beat, measured by `build/t2_ceiling.py` on the shipped unseen split (n=118).
 TODAY_NOREAD_UNSEEN = 0.7881
 
 
@@ -131,7 +134,7 @@ def answerable_edge(e, lat):
 def pool_cells(lat, dis_ok):
     """One pass: every answerable (edge, granularity, horizon, disease) cell, per (axis, op).
 
-    A cell is the unit `gen/build_items.py` samples. Rows are kept as light tuples -- the 421 MB
+    A cell is the unit the item builder samples. Rows are kept as light tuples -- the 421 MB
     edge file does not fit in memory as parsed dicts, and nothing downstream needs the whole row.
     """
     pool = collections.defaultdict(lambda: {"up": [], "dn": [], "ind": []})

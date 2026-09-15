@@ -5,7 +5,7 @@ The data are not in this repository. They are on Hugging Face:
 file and the disclosure rules applied.
 
 ```bash
-huggingface-cli download Chrisa142857/cohort-world --repo-type dataset --local-dir data
+hf download Chrisa142857/cohort-world --repo-type dataset --local-dir data
 export CW_PANEL=$PWD/data/official CW_OFFICIAL=$PWD/data/official CW_SIDECAR=$PWD/data/official
 export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 ```

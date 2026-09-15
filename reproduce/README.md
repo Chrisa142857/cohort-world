@@ -16,7 +16,12 @@ export CW_VLLM_KEY=dummy                     # the client requires the variable 
 ## Table 3, CohortCal
 
 One row per model. `single` is the leaderboard protocol every row uses: the estimator system prompt
-(`prompts/sys_estimator.txt`), one user turn, temperature 0, a bare percentage parsed from the reply.
+(`prompts/sys_estimator.txt`), one user turn, temperature 0, a 48-token cap, thinking switched off
+(`chat_template_kwargs.enable_thinking = false`, which `table3.sh single` always sends), and a bare
+percentage parsed from the reply. How each open model was served (Hugging Face repo and revision,
+tool-call parser, vLLM flags, chat_template_kwargs) is in `gen/model_zoo.tsv`;
+`gen/reasoning_kwargs.py --serve <name>` prints the `vllm serve` line. The reasoning kwargs matter
+for the agent rows and Table 4, all Qwen, whose eval configs set `enable_thinking = false`.
 
 ```bash
 reproduce/table3.sh http://host:8000/v1 qwen3.5-9b Qwen3.5-9B single

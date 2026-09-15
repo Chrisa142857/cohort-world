@@ -24,7 +24,7 @@
 #   `cw_observe` accepts the chapter word the question itself uses (a wider action space than the
 #   configurations measured below had, so their scores are not comparable with this one's).
 #   min_population = 4, success_buffer = 128, credit_turn = "action", echo_alpha = 0.1, M = 16, N = 8,
-#   inflight 26. The algorithm (cs_grpo.py) also:
+#   inflight 22. The algorithm (cs_grpo.py) also:
 #     * REFUSES a single-label population in `contribution_metric` instead of returning the slope term
 #       at double weight -- a defect found in pre-launch review and reproduced by execution
 #       (single-label 0.6649933065595717, bit-identical to the same call with w_auroc=0).
@@ -185,7 +185,8 @@ credit = "contribution"  # each rollout is paid its OWN term in the population s
                          # the population AUROC steps by 1/(n_pos*n_neg) and one rollout rarely crosses a
                          # rank. The per-patient concordance steps by 1/n_opposite and always moves.
 num_problems = 32        # UNUSED on the matrix path (it sized the rolling-context deque); kept so a
-                         # fallback run with patients_per_population = 1 reproduces the single-patient layout exactly        # M: this problem plus the 31 most recently scored form the population. 32 is
+                         # fallback run with patients_per_population = 1 reproduces the single-patient layout exactly.
+                         # M: this problem plus the 31 most recently scored form the population. 32 is
                          # the smallest size at which a population AUROC is not dominated by which
                          # handful of patients landed together; the smoke's 4 was for plumbing only.
 min_population = 4       # 8 -> 4, MEASURED both ways rather than chosen.
@@ -353,7 +354,7 @@ ratio = 1.0
 env.taskset.id = "cohortworld-internal"
 env.taskset.split = "train"
 env.taskset.task.patients_per_population = 16   # M: one episode answers 16 patients, so one episode
-                         # IS one population. min_population is 8, so at least half of a population's
+                         # IS one population. min_population is 4, so at least a quarter of a population's
                          # cells must produce a usable prediction before it scores -- the matrix removes
                          # the STALE comparison set, it does not remove the need for cells to act.
 env.taskset.task.reward = "cohort_think_cal"   # computed and logged for comparability; NOT the credit

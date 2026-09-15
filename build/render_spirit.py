@@ -2,12 +2,14 @@
 # release-gate: allow-file -- ran against the private UKB extract; shipped for provenance, paths shown as they were
 """The PUBLISHABLE item generator for T1, T2 and T3.
 
-`gen/build_items.py` rendered one REAL member of the target cohort into every T1 and T3 item
+The earlier item builder rendered one REAL member of the target cohort into every T1 and T3 item
 (`render_patient` reads the private history tables). 82.8% of the 3,112 items it produced are unique
 on (codes, age, sex) inside the item set alone -- a lower bound on uniqueness across UKB's ~500,000
-people -- so those items cannot be published and neither can any score computed on them
-(`docs/item-rendering-spec.md` §10). This file is written from
-`docs/item-rendering-spec.md`, whose spirit is `docs/item-rendering-spirit.md`.
+people -- so those items cannot be published and neither can any score computed on them.
+This file renders items under three principles (the rendering "spirit"): (1) an item carries only
+its target cohort's own released description, nothing read from a private table; (2) the only
+rewrite is de-grouping the age band to `about xx age`; (3) difficulty comes only from dials that
+remove or coarsen, so no item is more precise than its source.
 
 PRINCIPLE 1 IS ENFORCED STRUCTURALLY, NOT BY AUDIT. The user's instruction was explicit: the
 publishable code path must not be able to reach the private history tables, and no post-hoc
@@ -25,13 +27,13 @@ tells you nothing. Two mechanisms, in this order:
       reference is the lazily-built `Lattice._priv()`; it is never called here, and (a) would raise
       if it were.
 
-The private `subject-unseen` split is a SEPARATE entry point, `gen/build_items_subject.py`, which
+The private `subject-unseen` split is a SEPARATE entry point (a private builder, not released), which
 imports this module for the schema and does open those tables. It is the spirit's sole exception and
 it writes only under the private root.
 
 Run:
-  .venv/bin/python gen/render_spirit.py --selfcheck
-  .venv/bin/python gen/render_spirit.py --out <rundir>/artifacts/<name>.txt --emit <itemdir>
+  .venv/bin/python build/render_spirit.py --selfcheck
+  .venv/bin/python build/render_spirit.py --out <rundir>/artifacts/<name>.txt --emit <itemdir>
 """
 from __future__ import annotations
 import argparse, collections, glob, hashlib, json, os, random, re, statistics as st, sys
@@ -69,7 +71,7 @@ def install_private_guard():
                 if pat in p:
                     raise PrivateAccess(
                         f"the publishable item path tried to open {p!r}, which matches the private "
-                        f"pattern {pat!r}. docs/item-rendering-spirit.md principle 1.")
+                        f"pattern {pat!r}. Principle 1: no private table is readable here.")
     sys.addaudithook(hook)
 
 
@@ -108,7 +110,7 @@ VERSIONS = ("C1", "C2", "default")
 GRAN = {"C1": 1, "C2": 2, "default": 3}
 AXES = ("age_band", "sex", "icd", "opcs", "bnf")
 CODE_AXES = ("icd", "opcs", "bnf")
-MASK_POOL = ("icd", "opcs")          # spec §3b: bnf is the failure boundary; age/sex leak via entry
+MASK_POOL = ("icd", "opcs")          # bnf is the failure boundary; age/sex leak via entry
 HORIZ = [1, 2, 3, 5, 10]
 MIN_K = 10                           # gen/panel_common.MIN_N, restated as the item-side floor
 SEED = 42
@@ -137,12 +139,12 @@ unseen **3** -- one item per class on a three-class task, 20x below the n>=60 ba
 97% of T2's unseen supply at any ratio and its from-cohorts simply do not hash into a 5% band.
 
 The supply cannot be grown to rescue 90/5/5. Two measurements settle that:
-  * §0/§1: the `1,052/58/68` column that `docs/t2-resample-spec.md` sizes a rebuild off is
+  * `t2_compose` §0/§1: the `1,052/58/68` column a rebuild was sized off is
     `bal any-gran`, which counts the same edges' cells at FOREIGN granularities. Version <-> outcome
     granularity is a bijection and `DeltaTaskset.load` tests exact membership, so the server refuses
     them. The clause-4 repair measured 316/32/38 -- exactly what was already there. It buys emission
     efficiency (every emitted item is servable), not supply.
-  * §2: the one stratum with large supply, `age_band shift` (2,198 pooled balanced cells), was
+  * `t2_compose` §2: the one stratum with large supply, `age_band shift` (2,198 pooled balanced cells), was
     DROPPED on a scored ladder -- reading beats a free age rule there by +0.0056 [+0.0000, +0.0167]
     -- and re-adding it requires de-grouping the age branch of `internal._t2_clause`, which is a
     FROZEN module and a prompt-sentence (MAJOR) change.
@@ -165,7 +167,7 @@ SPEC_VERSION = "3.0.0"               # this item schema; bumped when the schema 
 NOMATCH_SHARE_BENCH = 0.38
 POP_NOMATCH_SHARE = {"C1": 0.8825, "C2": 0.9066, "default": 0.9124}
 
-# spec §3d. `zoom` = coarsen bnf to level 2; `onset` = drop the `(first recorded ...)` clause.
+# `zoom` = coarsen bnf to level 2; `onset` = drop the `(first recorded ...)` clause.
 RUNGS = {
     "E0": {"share": 0.10, "n_mask": 0, "zoom": False, "onset": True},
     "E1": {"share": 0.15, "n_mask": 0, "zoom": False, "onset": False},
@@ -174,7 +176,7 @@ RUNGS = {
     "H1": {"share": 0.20, "n_mask": 1, "zoom": True,  "onset": False},
     "H2": {"share": 0.15, "n_mask": 2, "zoom": False, "onset": False},
 }
-CAND_CEILING = 20                    # spec §3c step 4: redraw once above this, then drop
+CAND_CEILING = 20                    # redraw once above this, then drop
 
 AGE_RE = re.compile(r"aged (\d+)-(\d+)")
 ONSET_RE = re.compile(r" \(first recorded [^)]*\)")
@@ -345,7 +347,7 @@ def split_of(sid: str, ratio=RATIO) -> str:
 
     Profile-disjoint by construction: `state_id` is a hash of the axes, so the disjointness unit is
     the profile. Subject disjointness is a separate property and is measured, not assumed -- see
-    `gen/build_items_subject.py`, which is where a subject exists at all.
+    the private subject builder (not released), which is where a subject exists at all.
     """
     h = int(hashlib.md5(f"cwsplit2:{sid}".encode()).hexdigest(), 16) % 100
     a, b = ratio
@@ -364,7 +366,7 @@ LEGACY_KEYS = ("age_band", "sex", "disease", "horizon", "answer_rate", "target_c
 
 def mkitem(*, item_id, task, split, version, description, ask, operation, dials, source, answer,
            labels, legacy) -> dict:
-    """ONE item shape, every task, every split (spec §1, invariant 4).
+    """ONE item shape, every task, every split.
 
     Every canonical key is present on every item; a key that does not apply to a task is `None`,
     never absent, so a reader that does `d["operation"]` gets `None` rather than a KeyError that
@@ -463,8 +465,8 @@ def draw_rung(version: str, s: dict, rng) -> str:
     """A rung from the schedule, restricted to the rungs this cohort can actually be rendered at.
 
     C1 admits no code zoom at all (`icd2`/`opcs2` are released by no version, and C1
-    carries one level per axis), and a cohort already at `bnf2` has no coarser bnf rung. §12 O1 of
-    the spec refuses to default the version balance; the recommendation it records is taken --
+    carries one level per axis), and a cohort already at `bnf2` has no coarser bnf rung. The version
+    balance is not defaulted silently; the choice taken is --
     C1 is mask-only, the rung is written on every item, and any headline can be re-cut by rung.
     """
     zoomable = code_levels(s)["bnf"] > 2
@@ -489,7 +491,7 @@ def build_t1_t3(version, states, cand, names, hops, dis, rng, out, log):
         sp = split_of(full)
         h = hops.get(full, -1)
 
-        # ---- T1: no dials at all (spec §5). Acceptance condition: candidates == 1.
+        # ---- T1: no dials at all. Acceptance condition: candidates == 1.
         native = dict(lv)
         c1 = cand.count(s, (), native, True)
         if h < 0:
@@ -515,7 +517,7 @@ def build_t1_t3(version, states, cand, names, hops, dis, rng, out, log):
                         "target_cohort": full, "n_band": s["n_band"], "granularity": g,
                         "pop_zero_share": POP_ZERO_SHARE, "hops_from_entry": h}))
 
-        # ---- T3: the dials, in full (spec §3). This is the only task that carries them.
+        # ---- T3: the dials, in full. This is the only task that carries them.
         cell = _cells(s, g, rng)
         if cell is None:
             drops["T3 no estimable (horizon, disease) cell"] += 1
@@ -528,7 +530,7 @@ def build_t1_t3(version, states, cand, names, hops, dis, rng, out, log):
         if R["zoom"]:
             zoom["bnf"] = 2
         got = None
-        for attempt in range(2):                      # spec §3c step 4: redraw ONCE, then drop
+        for attempt in range(2):                      # redraw ONCE, then drop
             mask = tuple(sorted(rng.sample(MASK_POOL, R["n_mask"]))) if R["n_mask"] else ()
             n = cand.count(s, mask, zoom, R["onset"])
             assert n >= 1, "a cohort is always consistent with its own degraded rendering"
@@ -569,12 +571,12 @@ def build_t1_t3(version, states, cand, names, hops, dis, rng, out, log):
 def build_t2(states_all, names, out, log):
     """T2, re-wrapped into the one schema. The COMPOSITION is t2_compose's and is not re-derived.
 
-    `gen/t2_compose.py` settles the T2 item set (age stratum dropped, ratio 50/25/25,
+    `build/t2_compose.py` settles the T2 item set (age stratum dropped, ratio 50/25/25,
     direction-balanced within (size, horizon, granularity), one `indistinguishable` control per
     separable pair drawn from the same (axis, op)). Re-deriving it here would be a second
     implementation of a scored decision, so this calls it and only changes the shape of the record.
 
-    Dials do not apply to T2 (spec §0/§5): `setup_task` places the agent ON the from cohort, so
+    Dials do not apply to T2: `setup_task` places the agent ON the from cohort, so
     `cw_look` restores anything the item redacts before the agent has acted. The `description` is
     therefore the from cohort's own released body, de-grouped, at native levels, onset stated.
     """
@@ -617,7 +619,7 @@ def build_t2(states_all, names, out, log):
                         "answer_delta": r["answer_delta"], "_audit": a,
                         "age_band": s["axes"]["age_band"], "sex": s["axes"]["sex"],
                         "n_band": s["n_band"], "pop_zero_share": POP_ZERO_SHARE}))
-    log(f"    T2 composition taken from gen/t2_compose.py, strata {len(strata)}, "
+    log(f"    T2 composition taken from build/t2_compose.py, strata {len(strata)}, "
         f"ratio {T2_RATIO[0]}/{T2_RATIO[1]}/{100 - sum(T2_RATIO)} -- T2's OWN ratio, see T2_RATIO")
 
 
@@ -753,7 +755,7 @@ def selfcheck():
 
 
 def verify(itemdir: str, log):
-    """Spec §8 clause 5: re-render every written item from its named release under its own recorded
+    """Re-render every written item from its named release under its own recorded
     dials and assert byte equality with what was written, plus the schema and the forbidden keys.
 
     This is the machine form of "publishable by construction". It is not a disclosure audit -- it
@@ -809,7 +811,7 @@ def main():
     if a.selfcheck:
         return selfcheck()
     if a.verify:
-        print("=== VERIFY (spec §8 clause 5) ===")
+        print("=== VERIFY (re-render, byte equality) ===")
         verify(a.verify, print)
         return print("verify OK")
 
@@ -825,8 +827,8 @@ def main():
         f"ratio T1/T3 {RATIO[0]}/{RATIO[1]}/{100 - sum(RATIO)}  "
         f"T2 {T2_RATIO[0]}/{T2_RATIO[1]}/{100 - sum(T2_RATIO)}")
     log(f"panel {PANEL}")
-    log("principle 1 is enforced by an audit hook (raises on any private open) plus an "
-        "import-graph assertion; the private split is a separate entry point.")
+    log("principle 1 (no private table readable) is enforced by an audit hook (raises on any "
+        "private open) plus an import-graph assertion; the private split is a separate entry point.")
     log("")
 
     dis = {g: json.load(open(f"{PANEL}/CohortWorld_C2_diseases_g{g}.json"))["diseases"]
@@ -874,7 +876,7 @@ def main():
             + f"   total {sum(c.values()):,}")
 
     log("")
-    log("=== DIALS DELIVERED (T3; O4 of the spec -- measured, never assumed) ===")
+    log("=== DIALS DELIVERED (T3; measured, never assumed) ===")
     t3 = [r for v_ in out["t3_rate"].values() for r in v_]
     if t3:
         by = collections.Counter(r["dials"]["rung"] for r in t3)
@@ -908,7 +910,7 @@ def main():
     log("  so `candidates >= 1` for every dial setting (asserted in --selfcheck and again in the")
     log("  build loop). No dial can manufacture a no-match item out of a released cohort. p = 0.38")
     log("  is therefore reachable only where a REAL person is the subject -- `subject-unseen`,")
-    log("  built by gen/build_items_subject.py, which is private by the same construction.")
+    log("  built by the private subject builder, which is private by the same construction.")
 
     log("")
     log("=== SPLITS ===")

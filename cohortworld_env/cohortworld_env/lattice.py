@@ -36,7 +36,7 @@ BNF_CH = {'01': 'gastro-intestinal', '02': 'cardiovascular', '03': 'respiratory'
 COARSER = {"default": "C2", "C2": "C1", "C1": None}
 FINER = {v: k for k, v in COARSER.items() if v}
 # The 80/10/10 state split does NOT live here. `Lattice.regime_of` / `chapters_for` / `RATIOS` sat in
-# this module with no caller anywhere in the repo -- the live split is `gen/build_tasks.py`, which
+# this module with no caller anywhere in the repo -- the live split is the task builder, which
 # runs once when the item files are built and never at rollout or scoring time. Dead code inside the
 # frozen surface is a mutation no test can catch (two of them survived the mutation run for exactly
 # this reason), so they are deleted rather than annotated a second time.
@@ -223,7 +223,7 @@ class Lattice:
     WHY IT EXISTS. Every internal T3 item IS a lattice cohort: the item carries `target_cohort` and
     its `answer_rate` is that cohort's published rate, and all 18,593 items' targets are still in the
     served lattice. So the answer was readable with `cw_observe` from the right state: 500/500
-    probed train items returned their own answer exactly (`gen/leak_audit.py --no-mask`), and in
+    probed train items returned their own answer exactly (a leak audit with masking off), and in
     one run's 2,597 training rollouts 33 (1.27%) took a published reading while standing on the target
     -- worth a measured +0.43 mean reward. Standing there is FINE and is now the design:
     the entry is meant to be the item's own small, specific cohort, from which the agent retreats to
@@ -247,7 +247,7 @@ class Lattice:
     while vLLM sat at 0-2 requests with an empty queue.
 
     So the fields are loaded only when the caller says it needs them. The default is not to.
-    `gen/nomatch_share.py:76` already does this by hand for the same reason: "the line is cut before
+    An earlier no-match audit already did this by hand for the same reason: "the line is cut before
     rates_g2 because g2 and g3 are 99% of the bytes and nothing here reads them".
 
     THE FAILURE THIS MUST NOT CAUSE, and why it needs a test rather than care: `estimable_cells` reads
@@ -273,7 +273,7 @@ class Lattice:
         # The three fields are CONTIGUOUS AND LAST in the builder's output -- the order is
         # state_id, axes, prompt_body, coarseness, n_band, rates, not_estimable, rates_g1, g2, g3 --
         # and rates_g1 begins at byte 5,088 of 44,560, so cutting there removes 88.6% of the text.
-        # `gen/nomatch_share.py:83` already does exactly this by hand, for exactly this reason.
+        # An earlier no-match audit did exactly this by hand, for exactly this reason.
         #
         # The cut is CONDITIONAL on finding the marker: a file whose fields were ordered differently
         # falls back to parsing the whole line rather than producing invalid JSON or, worse, a state
@@ -455,7 +455,7 @@ class Lattice:
         one it can read.
 
         NOT an exact-match "remove one code" edge, which is a dead end. Measured against THIS
-        implementation on 500 train items (`gen/drop_feasibility.py`): exact removal leaves 137/500
+        implementation on 500 train items (a drop-feasibility check): exact removal leaves 137/500
         (27.4%) with no released neighbour at all and 431/500 (86.2%) unable to reach a 200+ cohort,
         because the intermediate rungs were never released. Generalisation leaves 0/500 stranded and
         58.6% reaching 200+/1000+ in the one move.

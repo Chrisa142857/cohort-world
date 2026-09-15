@@ -137,7 +137,7 @@ class CohortWorldToolset(vf.Toolset[CohortWorldToolsetConfig]):
         # and it hides better than that half did: T1 still raises through `entry_cohort`,
         # but T3's reward never touches the lattice and so cannot notice. A PARTIAL panel is the only
         # way in -- a wholly absent one raises in `Lattice.__init__` -- which is why it survived, and
-        # why docs/ENVIRONMENT_SPEC.md could say "a missing panel is now loud" while this line kept a
+        # why the environment could be described as "a missing panel is now loud" while this line kept a
         # half-missing one quiet.
         if ver and ver != self.lat.version:
             lat = _shared(ver)
@@ -169,7 +169,7 @@ class CohortWorldToolset(vf.Toolset[CohortWorldToolsetConfig]):
         # Every internal T3 item IS a lattice cohort -- the item carries `target_cohort` and its
         # `answer_rate` is that cohort's published rate -- and all 18,593 items' targets are still
         # served, so `cw_observe` on that one state returned the label -- 500/500 probed train items
-        # returned their own answer exactly (`gen/leak_audit.py --no-mask`). Measured on one run's 2,597
+        # returned their own answer exactly (a leak audit with masking off). Measured on one run's 2,597
         # training rollouts: 33 (1.27%) took a published reading while standing on the target, worth
         # +0.43 mean reward. The one-move prompt was the only thing limiting it, which is a habit,
         # not a safeguard.
