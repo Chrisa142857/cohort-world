@@ -1,0 +1,38 @@
+# The "w/ CW" row of Table 3: the 31,784 CohortCal test items answered inside CohortWorld by the
+# untrained model under the ONE-TURN acting prompt (arm B), prompts/sys_clinician_contrast_v2.txt,
+# exported as CW_SYS by reproduce/table3.sh, with the base reward. This is the paper's 0.618 row.
+# base_url and model are placeholders the script fills in.
+model = "SERVED-NAME"
+num_tasks = 31784
+num_rollouts = 1
+shuffle = true
+
+[client]
+base_url = "http://HOST:PORT/v1"
+api_key_var = "CW_VLLM_KEY"
+
+[sampling]
+temperature = 0.6
+max_tokens = 6144
+frequency_penalty = 0.3
+
+[sampling.extra_body.chat_template_kwargs]
+enable_thinking = false
+
+[env.taskset]
+id = "cohortworld-phenocal"
+variant = "PhenoCal_C2"
+split = "test"
+
+[env.agent.harness]
+id = "null"
+
+[env.agent.runtime]
+type = "subprocess"
+
+[serve]
+max_concurrent = 4
+
+[serve.pool]
+type = "static"
+num_workers = 24

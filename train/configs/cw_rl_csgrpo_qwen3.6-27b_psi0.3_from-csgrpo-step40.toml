@@ -1,0 +1,429 @@
+# The 27B arm of the CS-GRPO comparison, stage two: the psi term at 0.3.
+#
+# Continues from stage one's last checkpoint, as the 9B stage two continues from its step 100. Twenty
+# steps rather than fifty, for the clock reason stated in the stage one config.
+# CS-GRPO: the configuration in which the paradigm's second half can actually operate.
+#
+# THE SPEC (restated as the requirement this config is measured against):
+#   1. Abandon single-patient sampling (1 problem -> N outputs). Sample a PATIENT MATRIX (M problems ->
+#      M x N outputs) so population-level metrics (AUROC, calibration slope) can be evaluated.
+#   2. In that matrix EVERY CELL does both:
+#      a. turn 1 -- the model emits <cohort-think> [natural-language clinical reasoning] </cohort-think>
+#      b. turn 2 -- the model emits the ACTION CHOICE AND ITS PARAMETERS, informed by turn 1 and by the
+#         libraries' hinting of the environment's action space.
+#
+# WHAT AN EARLIER CONFIGURATION MEASURED over 38 steps and ~19,000 rollouts:
+#   2a CONFORMS -- 32/32 declared in every group, every step, from step 0. The cold start taught it.
+#   2b DOES NOT -- 6177 of 6577 traces (93.9%) emitted no tool call, and the ones that did were not
+#      trained for it. Under the previous credit mode, nonzero advantages were confined to assistant
+#      turn 1 in 800/800 trainable branches INCLUDING all 37 that contained a tool call: every token
+#      after turn 1 was assigned literal 0.0 and then stripped from the RL loss AND its denominator by
+#      _prune_zero_advantages (train_sink.py:36-58, constant_trainer_batch_size = true). The bootstrap
+#      ladder was therefore paid to turn-1 PROSE, where it can only upweight wordings that co-occurred
+#      with acting and can never upweight a tool-call token. Neither the cold start (single-turn
+#      demonstrations) nor the reward could teach the action: both paths were shut.
+#   1  DOES NOT -- 0 populations scored in every one of ~600 groups, which follows from 2b.
+#
+# What holds for THIS config:
+#   `cw_observe` accepts the chapter word the question itself uses (a wider action space than the
+#   configurations measured below had, so their scores are not comparable with this one's).
+#   min_population = 4, success_buffer = 128, credit_turn = "action", echo_alpha = 0.1, M = 16, N = 8,
+#   inflight 26. The algorithm (cs_grpo.py) also:
+#     * REFUSES a single-label population in `contribution_metric` instead of returning the slope term
+#       at double weight -- a defect found in pre-launch review and reproduced by execution
+#       (single-label 0.6649933065595717, bit-identical to the same call with w_auroc=0).
+#     * skips and COUNTS such a column in the matrix gate (`N skipped for a single-label population`).
+#     * sets `self._baseline_src` unconditionally, so the log's `[baseline row]`/`[baseline group]`
+#       label is not stale (without that, a run logged `group` on 30 of 112 rows; only 4 were real).
+#
+# The design notes below were written while this configuration was developed and are kept for their
+# rationale; where one conflicts with the body of this file, the body is what runs. Nothing here is
+# read by pydantic -- the body is.
+#
+# THE TWO CHANGES behind the credit design.
+#
+#   A. the credit mode below (algo-side: cs_grpo.py + configs/algorithm.py).
+#      Format -> turn 1. Ladder (call/move/read) -> the turn that CARRIES a tool call, which in a real
+#      trace is a 15-token span (node 4) against turn 1's 165 (node 2). Metric -> the committed
+#      number wherever written. A rollout that never acted keeps the ladder's negative centred charge on
+#      turn 1, so the group still charges for not acting -- drop that and the comparison has no baseline.
+#      Asserted by cs_grpo._check_action_turn, whose CONTROL re-runs the same traces under the old mode
+#      and requires the acting turn to be exactly zero; if that control passed too, the modes would not
+#      differ and the check would prove nothing.
+#
+#   B. the env asks TWICE, and stops asking on `terminated` rather than on `acted()` (env-side).
+#      acted() is true after ANY tool call, and the ask names cw_look, so under a single ask an episode
+#      that OBEYED spent its one ask on cw_look, received the full legal-move listing, and
+#      was immediately recorded as having acted -- ending with the listing unused. Measured: cw_move is
+#      accepted 120/155 = 77.4% when a listing is in context and 0/122 when it is not (Fisher
+#      p = 9.3e-13). The one state in which the action is reliably available was the state the episode
+#      ended in. Asserted by tests/test_nudge_turn.py, whose regression test fails on the previous
+#      condition (verified: 1 failed / 6 passed with it restored).
+#
+# NOT DONE when A and B were designed, deliberately: spec point 1 (the patient matrix,
+# `patients_per_population` below, is what later met it). A group is N rollouts of ONE
+# task by construction (dispatcher.py:490-499, :544), and buffering to back-fill advantages is dead
+# because train_sink.py awaits finalize_group and then compiles the same group synchronously in the same
+# function (:267-268 -> :283 -> trajectories.py:170 -> trace.py:257-264 rebuilds the list fresh). The
+# only zero-library-change carrier is a multi-trace Episode (verifiers/v1/episode.py:88, :104), which
+# re-keys dataset rows, so no earlier score stays comparable, and whose harness feasibility was then NOT
+# DETERMINED. Deferred on an empirical bet worth stating plainly: if A and B raise the read rate,
+# populations form on the existing rolling context and the restructure may be unnecessary. If they do
+# not, it is next.
+#
+# ACCEPTANCE, read off the cs_grpo log line, as LEVELS not trends -- "every cell" is not a curve:
+#   2a  declared    stays at ~100%                      (before A and B: 100%)
+#   2b  called      rises to a large multiple of 5.2%   (before A and B, steps 1-20: 533/10266 = 5.19%,
+#                   frozen as the pre-registered comparator)
+#   1   populations scored > 0 AND metric advantage on > 0 rollouts    (before A and B: 0 and 0, always)
+# If `called` is still single-digit after the first few steps, A and B did not do it, and the answer is
+# the cold start: 2a is at 100% from step 0 because the demonstrations taught it, and the demonstrations
+# are single-turn. That asymmetry is the whole explanation and it would then be the thing to fix.
+#
+# `cw_observe`'s `disease`/`horizon` are OPTIONAL and default to the cell the question asks about, and
+# the credit design depends on it. The two-stage question names the disease in WORDS because the
+# demonstrations never show codes, so an `observe` that required the code could not meet it. Measured
+# on a form-A smoke run with the code required: 786 rollouts, 785 declared,
+# 49 called, 14 moved, **1 read**, 1 usable, 0 populations scored -- three of four observes after a
+# successful move failed with `no disease matching '<name>'`, and the one that guessed the code right
+# produced the only usable prediction. With no reading there is no population and metric_weight pays
+# nothing, so the whole credit design was inert without it.
+#
+# Environment wall-clock: `CohortWorldToolset.__init__` uses the
+# module's memoizing `_shared()` instead of building a `Lattice` per rollout. `verifiers/v1/rollout.py:240`
+# builds toolsets SYNCHRONOUSLY inside the env-server worker's asyncio loop, so a bare `Lattice(version)`
+# parsed 320 MB of states twice per rollout and blocked every episode multiplexed onto that worker.
+# Measured before: 6.39/6.40/5.95 s CPU per call, workers at 88.0-88.8% CPU sustained, 18.8 core-s per
+# rollout, 25.5 rollouts/min predicted from the loop budget vs 25.5 spawned / 22.3 completed observed --
+# while vLLM was idle in 230 of 300 one-second samples, `num_requests_waiting` 0 in EVERY sample, KV cache
+# 0.7% at peak. After: 6.08 s -> 0.00 s on the second construction, maxrss flat. A step without it took 27m55s.
+#
+# NOT changed, and the reason: `serve.pool.num_workers` stays 8. Raising it to 32 was tried on a wrong
+# theory and reverted -- the 8 workers already held 316 GB (32.7-44.9 GB each) and all 8 sat at 88% CPU, so 32 would
+# have needed ~1.26 TB and there was no pile-up to fix. Revisit only after the memoization is measured.
+#
+# The remaining known lever is NOT taken here: CohortWorld declares `toolsets` on `_CWTask`, and verifiers'
+# own docstrings say `Task.toolsets` launches a tool server PER ROLLOUT while `Taskset.toolsets` gives one
+# per environment worker reused across rollouts (its wiki_search example is exactly this case). That would
+# remove the ~10 s subprocess boot and the ~368 GB held by ~101 concurrent tool servers, but the toolset
+# carries per-episode state (`asked_disease`, `asked_horizon`, `lat.current`, `lat.masked`) that has to be
+# lifted out first. Deferred deliberately: measure one change before stacking a refactor on it.
+#
+# CS-GRPO from the SFT cold start. The reward is a POPULATION statistic (AUROC + calibration
+# slope over M patients), which is what the benchmark is judged on and what no single rollout can carry.
+#
+# What differs from a plain GRPO run, and why:
+#   * the advantage is NOT the environment's scalar reward minus a group mean. `cohort_think_cal` is
+#     still computed and still logged as "Reward" -- it is the comparable number across runs -- but the
+#     credit comes from CS-GRPO: a format term on every sampled token and a population-metric term on
+#     the declared number's tokens only. Reading the logged Reward as this run's objective would be
+#     reading the wrong quantity.
+#   * the start model is the SFT cold start: 1,845 demonstrations whose opening sentence names the
+#     comparison group verbatim from the frozen edge table and whose closing line is the adjustment.
+#     The policy therefore already emits the <cohort-think> block the format term scores, which is what
+#     the 2B smoke could not do (no block -> no declaration -> no population -> metric identically zero).
+max_steps = 20           # the 9B stage one's compression saturated by step 36-39 (2.4% empty-arg commits at
+                         # steps 1-8 -> 100% at 39-100), so 50 steps is enough to see whether the delta
+                         # term reverses the declaration magnitude. Not a budget claim: extend it if the
+                         # |Adjustment| median is still moving at 50.
+seq_len = 16384
+
+[run]
+name = "csgrpo_qwen3.6-27b_psi0.3"
+# SCORER REQUIREMENT. A trace that called cw_commit with a BARE NUMBER used to crash the scorer and be
+# discarded -- Error 31.9% / 14.6% / 10.0% over three steps -- and the loss is not random, because a trace
+# only crashes if it got far enough to COMMIT. The discarded traces were the ones that acted furthest, so
+# the called 9.69% and read 0.80% measured under that crash are SYSTEMATICALLY UNDERSTATED and cannot be
+# compared with the 5.19% comparator. The environment's parse_values reads a bare int/float and an
+# already-parsed dict instead of raising.
+# MEMORY. A pilot proved the matrix (8 populations x 16 patients in one score_group) and was
+# stopped on purpose: 128 tool servers held 548.7 GiB, vLLM ran 0-2 requests with an empty queue, and
+# the trainer GPUs sat at 0%. The change that followed is ONE thing -- the tool server no longer loads
+# rates_g1/g2/g3 (88.4% of a state's bytes, read only by the taskset's draw_cells) -- which took its
+# states dict from 2.40 GB to 0.29 GB and bought twice the pipeline depth for the same memory.
+
+[ckpt]
+interval = 10
+keep_last = 5
+keep_interval = 10
+
+[deployment]
+num_train_gpus = 6
+num_infer_gpus = 2       # 2 -> 1 for the 48 GiB-card node, inherited from stage one's 96 GiB-card node shape. NOT a tuning choice:
+                         # the 96 GiB-card node's 96 GiB cards left room for two inference ranks; the 48 GiB-card node's are 48 GiB
+                         # with other users resident, and a TRAINING rank needs 6x the bf16 weights /
+                         # num_train_gpus = 30,960 MiB, which only four of the six cards can offer. The
+                         # arithmetic forbids shrinking the TRAINING side instead: fewer training cards
+                         # raises the per-card requirement (2 cards -> 53,841 MiB/card, impossible), so
+                         # the inference side is the only one that can give.
+
+[model]
+name = "checkpoints/csgrpo-qwen3.6-27b-step40_bf16"  # the bf16 export of the previous stage (SFT or the earlier RL run)
+# CONTINUATION, not a fresh run: this is stage one's own final policy, exported to bf16 and copied onto
+# shared storage (11 files, per-file sizes identical, md5 of the largest shard matching). The optimiser
+# state is NOT resumed -- prime-rl's `resume` would restore stage one's own checkpoint directory and
+# with it stage one's algorithm config, which is exactly what this run changes.
+# Fresh optimiser, step counter from 0, everything else below byte-identical to stage one.
+
+[orchestrator]
+batch_size = 512         # TRACES, not groups (train_sink.py:172-176 compares against
+                         # len(pending_batch)). M=16 x N=8 = 128 traces per group -> 4 groups per step ->
+                         # 32 populations per step, and 512 patient answers per step: IDENTICAL
+                         # generation cost to the single-patient layout, which spent the same 512 on 16 problems x 32.
+group_size = 8           # N: episodes per group. Each episode is one POPULATION of M patients, so a
+                         # group is N populations and M*N traces. N is also the GRPO baseline width for a
+                         # given patient (its N cells across the N episodes); docs/training.md:398 puts
+                         # the floor at 8.          # docs training.md:398: "8 is the floor; 16-32 is common". a pilot ran at
+                         # the floor and 147 of 178 groups came back all-zero on every rung, so the
+                         # batch never filled and not one step completed. At a 2.6% call rate a group
+                         # of 8 contains a caller 18% of the time; a group of 32, 55%.
+
+[orchestrator.algo]
+type = "cs_grpo"
+credit_turn = "action" # A: ladder lands on the turn that ACTS, not on turn-1 prose    # only the first assistant turn carries advantage. The turns after it exist
+                         # because the environment ASKED for them, and the policy answers the ask by
+                         # repeating its own reasoning almost verbatim -- training that rewards saying
+                         # the same thing twice, and teaches dependence on a prompt that is a crutch.
+credit = "contribution"  # each rollout is paid its OWN term in the population statistic. Paying the whole
+                         # statistic (tried in a pilot) left 66.7% of groups with no metric gradient:
+                         # the population AUROC steps by 1/(n_pos*n_neg) and one rollout rarely crosses a
+                         # rank. The per-patient concordance steps by 1/n_opposite and always moves.
+num_problems = 32        # UNUSED on the matrix path (it sized the rolling-context deque); kept so a
+                         # fallback run with patients_per_population = 1 reproduces the single-patient layout exactly        # M: this problem plus the 31 most recently scored form the population. 32 is
+                         # the smallest size at which a population AUROC is not dominated by which
+                         # handful of patients landed together; the smoke's 4 was for plumbing only.
+min_population = 4       # 8 -> 4, MEASURED both ways rather than chosen.
+                         #
+                         # What 8 cost: an earlier run scored 0 cells in 12 of 12 groups. A population of M=16
+                         # needs `min_population` usable cells, so the necessary condition is
+                         # M*p >= min_population; p (read a rate elsewhere) measured 1.68%, M*p = 0.27,
+                         # and 25 usable cells fell across 96 populations (0.26 each). At M=16 the
+                         # binomial tail P(>=8 usable) is 0 below p=25% and reaches 0.598 only at p=50%.
+                         #
+                         # What 4 costs: the metric gets noisier and NOT weaker. Measured on 1,877 real
+                         # item truths (good = truth x U[0.9,1.1], bad = permuted truth x U[0.9,1.1],
+                         # 400 draws): signal (good-bad) is FLAT across population size -- 0.2792 at 4,
+                         # 0.2680 at 8, 0.2627 at 16 -- while noise falls as ~1/sqrt(n), so SNR goes
+                         # 1.27 at 4, 1.59 at 8, 1.84 at 16. A 20% SNR cost. At 3 the slope term starts
+                         # drawing RankWarning and returns None 0.5-1.2% of the time; 4 is the floor that
+                         # keeps both halves of the metric defined. `contribution_metric`'s own hard
+                         # floor is len(keep) >= 3.
+                         #
+                         # 4 alone does NOT fix it: at p=1.68% P(>=4 of 16) is 0.0007. It is necessary,
+                         # not sufficient -- `success_buffer` below is the other half.
+populations_per_rollout = 8   # each rollout's score averages over 8 different comparison sets
+success_buffer = 128     # SPEAR's exploitation half (arXiv 2509.22601, ICLR 2026): the rare successes
+                         # keep paying after the step they happened in, instead of being discarded.
+                         #
+                         # An earlier run generated 25 rollouts that moved AND read, out of 1,488 -- and threw all
+                         # 25 away at the end of the step. The ladder (call/move/read below) was already
+                         # SPEAR's exploration half; this is the half that was missing, and the
+                         # measurement says it is what costs everything: `read` did not trend up over 5
+                         # steps (1.86, 1.56, 1.76, 0.98, 1.56%), so waiting does not fix it.
+                         #
+                         # 128 usable cells ~= a handful of steps once reads rise. Two costs, both real:
+                         # the borrowed members come from older policy versions, so the statistic is
+                         # partly off-policy (the depth IS the staleness knob), and only ~3 members are
+                         # needed per short column so most of the depth buys label diversity rather than
+                         # coverage. Credit goes ONLY to the current step's cells; buffer members are
+                         # comparison set, never gradient.
+                         #
+                         # NOT trace-level replay. prime-rl's `Algorithm` surface cannot inject a trace
+                         # from an earlier step (the train sink compiles synchronously when
+                         # finalize_group returns), so what is reused is the success's MEASUREMENT, not
+                         # its tokens. Stated here because calling this "SPEAR" without that caveat
+                         # would overclaim.
+auroc_weight = 1.0
+slope_weight = 1.0
+slope_target = 1.0
+call_weight = 0.1        # bootstrap rung 1: emitted any tool call. a pilot measured 34/1338 calling
+                         # and 1/1338 reading -- 33 rollouts took the first step correctly and were paid
+                         # exactly what a rollout that did nothing was paid.
+move_weight = 0.2        # rung 2: reached a different cohort
+read_weight = 0.3        # rung 3. Two pilots measured num_turns mean 1.002 over 512 rollouts:
+                         # the cold start teaches one turn, and the population term pays only a rollout
+                         # that MOVED and READ, so before any rollout moves every advantage is zero and
+                         # the move can never be discovered. Centred within the group, so it stops paying
+                         # once every rollout reads. Set to 0 once movement is established.
+metric_weight = 1.0
+delta_baseline = 0.5     # SET, and the reason is a MEASURED defect, not a preference.
+                         # Default None subtracts the GROUP MEAN, which made this term nearly inert: over
+                         # a smoke run's 32 groups the median |delta adv| was 0.0019 against the metric's
+                         # 0.0829, with corr(within-group declaration spread, |delta adv|) = 0.721. The RL
+                         # policy declares almost the same number in every rollout (median spread 0.0016 --
+                         # the 256x compression), so centring an ABSOLUTE accuracy annihilates it however
+                         # wrong the shared number is. Raising delta_weight scales ~0; it is the baseline,
+                         # not the weight, that zeroes the term.
+                         # 0.5, not 1.0: `accuracy - 1.0` is never positive, so every declared-number token
+                         # would carry negative advantage and IPO would train the model out of emitting the
+                         # Adjustment span at all. With 0.5 (accuracy = exp(-err/0.035877), so the crossover
+                         # is err = 0.0249) a declaration within ~0.025 of the true delta is REWARDED.
+                         # Checked numerically: on a group that agrees on a
+                         # wrong number this gives 0.0751 where centring gives 0.0000042, and it keeps both
+                         # signs on a spread group (-0.118 .. +0.150).
+delta_weight = 0.3       # Credit on the DECLARED number's own tokens for how close the declared
+                         # difference is to the one the reading implies:
+                         #     credit = exp(-|declared - (reference - truth)| / delta_scale)
+                         # `delta_scale` unset -> derived from the environment's own mean |base - truth|
+                         # over the training split (0.035877), so this scale cannot drift from the one
+                         # reward's q2/r2 are normalised by.
+                         #
+                         # WHY. The 9B stage-one policy at step 100 declares |Adjustment| with median 0.0002 against the cold
+                         # start's 0.0512 -- a factor of 256 -- because `contribution_metric` scores only
+                         # the ORDERING of `pred = max(reference - declared, 0)` and contains no term for
+                         # the declaration's accuracy. A declaration near zero leaves pred equal to the
+                         # reading and keeps whatever ordering the reading carries; an honest large one
+                         # clips pred to 0 on the 65% of items whose reading is 0 and lands the cell at
+                         # the bottom of the concordance. Shrinking was the optimum, not an instability.
+                         #
+                         # 0.3 is a STARTING value, not a measured one. metric_weight is 1.0 and the
+                         # delta credit is in (0,1] centred per row, so the two terms are the same order
+                         # of magnitude; too large and it overrides the metric and costs AUROC, which is
+                         # the trade that motivated leaving it out originally. Both signals are logged
+                         # separately so that trade is observable rather than averaged away.
+echo_alpha = 0.1         # C: ECHO's lambda on tool-response bodies (docs/algorithms.md:77 -- "rl on
+                         # actions + weighted ce on observations"; 0.1 is its vetted default). The
+                         # observation tokens feed `ce` and stay OUTSIDE the rl mask and its denominator,
+                         # so this does not dilute the population term (:191). Why CohortWorld needs it:
+                         # a legal move id is axis.op.code->version:16-hex, unguessable, and appears only
+                         # inside a tool result. 220 of 220 accepted moves across two earlier runs copied one
+                         # verbatim from context; 0 were composed. The shape of what the environment says
+                         # back IS the thing to learn, and CE on the environment's own tokens is the
+                         # documented way to learn it. cs_grpo reuses EchoAlgorithm._weight_observations
+                         # rather than restating its selection rule.
+format_weight = 0.2
+benchmark_repo = ""  # empty: cs_grpo reads the CohortWorld checkout from $CW_REPO
+
+[orchestrator.renderer]
+name = "qwen3.5"
+enable_thinking = false
+
+[orchestrator.concurrency]
+# EPISODES in flight, not patient answers -- and with patients_per_population = 16 one episode IS 16
+# concurrent patient answers, each spawning its own cohortworld_env.toolset process at ~2.63 GiB.
+# The first matrix launch kept the single-patient layout's 128 here. The TRACE arithmetic was right (M*N = 128 per group,
+# 512 patient answers per step, the single-patient generation cost exactly) but `batch_size` counts traces while
+# `max_inflight` counts episodes, and M multiplies only the second: 128 x 16 = 2048 concurrent tool
+# servers = 5.3 TB wanted on a 2 TB node. Observed before it was killed: 381 live tool servers,
+# MemAvailable 19 GiB of 2015, on a node shared with another user.
+# 8 x 16 = 128 concurrent patient answers -- the same concurrency the single-patient layout actually ran at.
+# gen/preflight_concurrency.py refuses a launch whose product does not fit, and its test asserts that
+# it refuses THIS file's previous values and admits these.
+initial_inflight = 22    # = max_inflight, so the run starts deep instead of ramping into it. The
+                         # validator requires >= group_size (8) and <= max_inflight.
+min_inflight = 22        # THE LEVER THAT WAS MISSING. prime-rl's concurrency is ADAPTIVE between
+                         # min_inflight (default 1) and max_inflight, so max_inflight is a CEILING, not
+                         # a depth: two earlier launches both sat at "8 inflight episodes"
+                         # with max_inflight 16 and 64 respectively, because generation was slow, the
+                         # queue was never pressured, and the controller had no reason to expand.
+                         #
+                         # 64 -> 32 after a later launch measured the steady state: 1026 servers held 1167 GiB
+                         # (mean 1.14, median 0.49, p90 2.42), MemAvailable fell to 161 GiB and the run
+                         # was stopped ahead of its own watchdog. The arithmetic allows 45; 32 is taken
+                         # instead because this per-server figure has been wrong three times -- 63% low,
+                         # 4.7x high, then 2.2x low -- and a margin is cheaper than a fourth restart.
+                         # 32 is still 4x the depth that produced 200-350 tok/s; 64 reached 1509 tok/s.
+                         # The config's own docstring names the fix: "Set min_inflight = max_inflight to
+                         # recover fixed concurrency." Memory is what pinning it risks, and that is what
+                         # gen/preflight_concurrency.py bounds and the memory watchdog enforces.
+# 8 -> 16 after the granular-fields change took a tool server's states dict from 2.40 GB to 0.29 GB
+# (rates_g1/g2/g3 are 88.4% of a state's bytes and no tool server reads them; only the taskset's
+# draw_cells path does, once per env-server worker). 16 x 16 = 256 concurrent servers at ~2.20 GiB
+# = 563 GiB, against the matrix pilot's 128 x 4.29 = 549 GiB -- twice the pipeline depth for the same memory.
+# NOT raised further in one step: the per-server figure is an estimate and the last one was 63% low.
+# Re-measure on this run, then raise.
+max_inflight = 22        # 26 -> 22 for the 48 GiB-card node: the host-memory budget is the node's, not
+                         # the 96 GiB-card node's. the 48 GiB-card node's own preflight measured 899 GiB available, 499 GiB after the
+                         # 400 GiB reserve, and 26 x 16 x 1.3 = 541 GiB exceeds it. 22 x 16 x 1.3 = 458
+                         # GiB leaves 41 GiB of headroom for the other users already on the node.
+                         # PREVIOUSLY: 32 -> 26: gen/preflight_concurrency.py REFUSED 32 because the
+                         # node's MemAvailable had fallen from 1081 to 1062 GiB between the check and the
+                         # launch (other users), and 32 x 16 x 1.3 GiB = 666 GiB exceeded the 662 GiB
+                         # budget left after the 400 GiB reserve. 26 x 16 x 1.3 = 541 GiB, which leaves
+                         # ~120 GiB of slack for exactly that drift rather than sitting at 98% of budget.
+                         # Costs ~19% of pipeline depth; steps were 4-5 min at 32.        # 16 -> 64 on two MEASURED changes, not on an estimate:
+                         #   memory  4.29 -> 0.47 GiB per tool server (49 live servers held 22.9 GiB),
+                         #           so 64 x 16 = 1024 servers cost ~614 GiB of a ~997 GiB budget;
+                         #   boot    10.0 -> 2.7 s (lattice 7.38 -> 1.0 by cutting the JSON text before
+                         #           rates_g1, which is 88.6% of every line and is read by no tool
+                         #           server), so a deeper pipeline buys generation instead of more
+                         #           simultaneous booting.
+                         # An earlier launch ran 8 episodes deep with vLLM at Running 0-3 and every
+                         # GPU at 0%: the queue was empty, not backed up.
+
+[[orchestrator.train.source]]
+name = "cohortworld-internal"
+ratio = 1.0
+env.taskset.id = "cohortworld-internal"
+env.taskset.split = "train"
+env.taskset.task.patients_per_population = 16   # M: one episode answers 16 patients, so one episode
+                         # IS one population. min_population is 8, so at least half of a population's
+                         # cells must produce a usable prediction before it scores -- the matrix removes
+                         # the STALE comparison set, it does not remove the need for cells to act.
+env.taskset.task.reward = "cohort_think_cal"   # computed and logged for comparability; NOT the credit
+curriculum.gates.nonzero.type = "advantage_range"
+env.agent.harness.id = "null"
+env.agent.runtime.type = "subprocess"
+serve.pool.type = "static"
+serve.pool.num_workers = 8
+
+[orchestrator.train.sampling]
+max_completion_tokens = 2048
+
+[rollout_transport]
+type = "zmq"
+port = 5660
+
+[trainer]
+[trainer.model]
+optim_cpu_offload = true # PINNED, not left to prime-rl's default, because the GPU admission threshold is
+                         # DERIVED from it. With the AdamW fp32 moments on CPU a training rank holds only
+                         # bf16 weights + bf16 grads (4 B/param sharded) instead of 12 B/param, and the
+                         # gate that assumed the latter demanded 30,960 MiB/card when a trial launch's ranks actually
+                         # held 9,672 MiB. On a node whose cards sit at ~18 GiB free that 3x overestimate
+                         # is the difference between launching and waiting hours. If prime-rl's default
+                         # ever flips, this line keeps the memory model and the gate in agreement.
+
+[weight_broadcast]
+type = "nccl"            # REQUIRED: weight_broadcast is a DISCRIMINATED UNION (nccl / nixl /
+                         # filesystem) and pydantic cannot pick a member without it -- setting only
+                         # port/timeout failed with "Unable to extract tag using discriminator
+                         # 'type'". "nccl" is what the run resolved to by default before this
+                         # section existed (orchestrator logged type='nccl'), so this pins the
+                         # behaviour that was already in effect rather than changing it.
+port = 29537             # NOT the default 29501. Another user on the shared node held BOTH 29500 and
+                         # 29501 on this node -- torch's default MASTER_PORT pair -- so the inference side's
+                         # `POST /init_broadcaster` connected to THEIR TCPStore and got
+                         # "DistNetworkError: Failed to recv, got 0 bytes. Connection was likely closed."
+                         # A shared node makes the framework default the single most likely port to collide.
+timeout = 3600           # 1200 -> 3600. The trainer must reach the rendezvous before this expires, and on
+                         # this node a cold torch.compile/inductor cache left it 31 minutes past the
+                         # device-mesh build with no log line. 1200s gave up while startup was still going.
+
+[inference]
+
+[inference.vllm]
+max_num_seqs = 96        # Qwen3.5 is HYBRID (24 linear_attention + 8 full_attention layers) and a
+                         # decode sequence needs one MAMBA cache block, so concurrency is bounded by those
+                         # blocks, not by KV tokens. vLLM's default 256 failed outright at gmu 0.48:
+                         #   ValueError: max_num_seqs (256) exceeds available Mamba cache blocks (155).
+                         # 2.51 GiB of cache gave 155 blocks (~16.6 MiB each). 96 leaves ~38% margin so a
+                         # co-tenant taking another ~1 GiB of this shared card does not break startup.
+                         # The 256 concurrent patient answers (max_inflight 16 x 16) are not lost, they
+                         # queue: lower throughput, same results. Re-check if gmu or free memory changes.
+gpu_memory_utilization = 0.48 # 0.55 -> 0.48. 0.55 fit the ENGINE into the card that was free
+                         # (26,678 of 30,083 MiB) but left only 3.4 GiB for the weight-broadcast
+                         # staging buffer, which needs 4.64 GiB -- a smoke launch
+                         # OOM'd there. 0.48 x 48,506 = 23,283 plus 5,000 of headroom = 28,283,
+                         # which fits 30,083 with ~1.8 GiB spare. KV drops to about 5.0 GiB,
+                         # still several times one 32,768-token sequence.
+                         # SET, not defaulted. prime-rl's default 0.9 asks vLLM for 90% of the card TOTAL
+                         # free at startup (0.9 x 47.37 GiB = 42.63 GiB); the 48 GiB-card node's cards are 48 GiB with
+                         # other users on them, so the first smoke died here after passing a gate that
+                         # tested the wrong quantity. 0.55 x 47.37 = 26.1 GiB: the 17947 MiB of bf16 weights
+                         # plus ~8.5 GiB of KV cache, and it fits the ~29 GiB actually free.
+max_model_len = 32768
+tensor_parallel_size = 2 # 27B on two inference cards: TP=1 ran DP=2 and each card tried to hold the whole model, "No available memory for the cache blocks". Same as stage one. Was 1, a leftover of the 9B on the 48 GiB-card node, where prime-rl asserts "Number of inference
+                         # GPUs must be divisible by the tensor parallel size". The smoke died on this
+                         # assertion and launch_rl.sh's failure grep did not know the string, so it
+                         # printed "launch OK" over a launch that never happened.
