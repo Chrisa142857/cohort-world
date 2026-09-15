@@ -1,14 +1,14 @@
-"""The pinned CohortWorld reward contract -- `docs/reward-spec.md`, implemented.
+"""The pinned CohortWorld reward contract, implemented.
 
-The document is the derivation; this file is the implementation, and the two are versioned together
-by `REWARD_SPEC_VERSION`. Any change to a value in the constants block below is a MAJOR bump and
+The derivation is the reward definition in Section 3 of the paper; this file is the implementation,
+versioned by `REWARD_SPEC_VERSION`. Any change to a value in the constants block below is a MAJOR bump and
 invalidates every score produced under a previous version.
 
 Why one module instead of a method on each Task: the same three rules have to hold for the three
 internal tasks and for the external PhenoCal task, and the last time they were "the same contract"
 they were the same contract by being COPIED. The copies drifted: `_parse_distribution` read a value
 in (1, 100] as a percentage while the commit path silently dropped it, and by the time anyone
-looked `gen/results_table.py` had grown a third rule again. Four call sites, one implementation.
+looked a results-table script had grown a third rule again. Four call sites, one implementation.
 
 The three things this replaces, and why each was a defect rather than a preference:
 
@@ -24,7 +24,7 @@ The three things this replaces, and why each was a defect rather than a preferen
   at chance, and a systematically-wrong-but-honest policy (q = 0) scores 0.838, beating every policy
   below 75% accuracy. Fixed by `ALPHA * R`, a correctness term that depends on the report's LOCATION
   and the outcome but never on its DISPERSION, so strict properness in the dispersion coordinate
-  survives untouched (reward-spec 2.2).
+  survives untouched.
 * **Nothing was pinned.** `NO_ANSWER` moved 0.0 -> -1.0 and `BUDGET` 12 -> 26 at the same time,
   and no run directory recorded either, so scores either side of that change are not comparable and
   nothing says so. Fixed by `CONSTANTS`, which a run dir writes into its config.yaml.
@@ -42,7 +42,7 @@ from functools import lru_cache
 # --------------------------------------------------------------------------- pinned constants
 
 ENV_VERSION = "7.6.3"
-"""Semantic version of the WHOLE environment, as `docs/ENVIRONMENT_SPEC.md` describes it.
+"""Semantic version of the WHOLE environment.
 
 Scope: the cohort and disease IDENTIFIERS, the item sets and splits, the action space (tool
 signatures), the observation space (every field a tool result carries, `at_risk` included), the
@@ -97,7 +97,7 @@ with the paper's number as a coincidence.
 What alpha does on T2, measured rather than derived (`tests/test_reward.py`): it lifts a perfectly
 accurate policy from 1.000 to 1.772 while leaving the degenerate q = 0 policy at 0.838, and makes
 the reward monotone in accuracy over [1/3, 1]. It does NOT make `r(q)` increasing BELOW chance --
-reward-spec 4.3's `alpha > 0.3371` assumes the decision tracks the pick, which is true of a point
+the analytic bound `alpha > 0.3371` assumes the decision tracks the pick, which is true of a point
 mass and false of the honest reporter that creates the degeneracy in the first place, whose median
 sits on the hedge class there so `R` is constant and no alpha can tilt it. That region is not one a
 trained policy occupies, and it no longer competes with competence, which is what alpha is for.
@@ -691,14 +691,14 @@ This is the guard against the worst exploit found in the environment: under the 
 -- maximum reward, zero reads, and a zero-gradient attractor once a group finds it. The tool
 signature accepts any length and an n=2 commit already occurs in archived data, so this is not
 hypothetical. Five values is also what every prompt asks for, and it caps one free extreme sample
-(reward-spec 5.4) at 20% of the reported mass.
+at 20% of the reported mass.
 
 Cost, measured on all 594 archived commits carrying rates: 552 already state exactly five, and 34
 state one to four (10 at m=1, 3 at m=2, 9 at m=3, 12 at m=4). Those 34 fall to the ladder's next
 rung rather than being scored, which is a 5.7% format cost. The free lunch is exactly and only at
 m = 2 -- the best worst-case CRPS over truths in [0, 1] is 0.00000 at m=2, 0.16667 at m=3 and m=4,
 0.20000 at m=5 -- so a lower floor would be defensible on that evidence alone; 5 is kept because it
-is the number the prompt asks for and reward-spec 6.1 pins.
+is the number the prompt asks for and the contract pins.
 
 Do NOT "fix" the estimator back to `n*n` instead. That would make spreading pay everywhere rather
 than only in the tail, which is the bias `crps` documents.
@@ -755,9 +755,9 @@ PER_AXIS = 6
 """Moves listed per `(axis, op)` group by `legal_moves.summary`; the rest are counted, not shown.
 
 Pinned HERE rather than left as `summary`'s default argument, which is where it used to live. A
-default argument is not a contract: it appeared in no run's `config.yaml`, in no
-`CONSTANTS()` call and in §2 of `docs/ENVIRONMENT_SPEC.md`, so someone could change 6 to 3 and every score
-stayed formally comparable while the achievable policy set had moved -- which §8 calls MAJOR.
+default argument is not a contract: it appeared in no run's `config.yaml` and in no
+`CONSTANTS()` call, so someone could change 6 to 3 and every score
+stayed formally comparable while the achievable policy set had moved -- which is a MAJOR version change.
 
 Why it changes the policy set and not just the token count: truncation is not uniform over the axes.
 Across all 38 archived trace files, 980 of 28,599 served `(axis, op)` groups were truncated, hiding
@@ -784,7 +784,7 @@ def CONSTANTS() -> dict:
     are pinned and hashed by it. Hashing `official/`, `prompts/` and the eval TOMLs alone never
     covers the item files, several sibling item builds can exist side by side, and `CW_ITEMS` is an
     environment variable -- so pointing a run at a different item set would leave no trace anywhere in
-    the run directory. Naming the root here is what lets `newrun.sh` hash its nine files.
+    the run directory. Naming the root here lets a run record hash the files it read.
 
     `semantic_hash` and the two panel roots are here for the same reason the numbers are. A run that
     recorded ALPHA but not which lattice it read was pinning the cheaper half: `dist` and
@@ -827,8 +827,8 @@ _SEMANTIC_MODULES = (
     "cohortworld_env/cohortworld_env/internal.py",
     "cohortworld_phenocal/cohortworld_phenocal/taskset.py",
 )
-"""Every module whose code can change a reward. `cohortworld_patient` is deliberately absent -- it is
-not one of the three frozen tasks (docs/ENVIRONMENT_SPEC.md) and nothing in the frozen surface imports
+"""Every module whose code can change a reward. A patient-facing package is deliberately absent -- it is
+not one of the three frozen tasks and nothing in the frozen surface imports
 it -- and so is `gen/`, which builds items and reads runs but is never on the scoring path."""
 
 _UNHASHED = ("ENV_VERSION", "VERSIONED_SEMANTICS")
@@ -893,8 +893,8 @@ new version and a new entry here, and a version bump with no code change is refu
 
 
 # Report provenance, recorded per episode as the `report_level` metric. Numeric because
-# `Trace.record_metric` casts to float; the names are the ones reward-spec 6.6 requires published
-# beside any score.
+# `Trace.record_metric` casts to float; the names are the ones that must be published beside any
+# score.
 STATED_COMMIT, STATED_TEXT, AUTO_OBSERVED, FLOOR = 1.0, 2.0, 3.0, 4.0
 LEVEL_NAMES = {1.0: "stated_commit", 2.0: "stated_text", 3.0: "auto_observed", 4.0: "floor"}
 
@@ -1384,7 +1384,7 @@ def _released(sid: str) -> dict | None:
 
 
 def locate_score(sid: str, target: str) -> float:
-    """`S` of reward-spec 3.2: 1.0 for the target, `NEAR / (1 + dist)` for anything else."""
+    """The locate score `S`: 1.0 for the target, `NEAR / (1 + dist)` for anything else."""
     if sid == target:
         return 1.0
     return NEAR / (1.0 + dist(sid, target))
@@ -1610,7 +1610,7 @@ def rate_reward(trace, *, truth: float, source: str, disease: str, horizon: int,
 
     `R` depends on the report only through its median, so `dR/d(dispersion) = 0` and the dispersion
     coordinate is elicited exactly as CRPS elicits it, for every alpha -- which is the one property
-    the whole design exists to protect (reward-spec 2.2).
+    the whole design exists to protect.
 
     `variant` picks a training-time form from `T3_REWARD_VARIANTS`; the default is this contract
     and the returned dict is unchanged except for one extra metric, `side`. `item` carries what a

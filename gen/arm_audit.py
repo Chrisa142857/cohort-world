@@ -2,11 +2,11 @@
 
 Every number here is produced by the ENVIRONMENT'S OWN reward code (`cohortworld_env.reward`) run
 over the archived trace, never by a restatement of it in gen/. That is not tidiness: this file used
-to carry its own copy of the answer-extraction rule, gen/results_table.py carried a second and
-gen/score_direct.py a third, and the three disagreed -- on the same reply one read a mean of 3.5 and
+to carry its own copy of the answer-extraction rule, a results-table script carried a second and
+a direct-scoring script a third, and the three disagreed -- on the same reply one read a mean of 3.5 and
 another 0.0264. `ArchivedTrace` is the whole bridge that makes the reuse possible.
 
-NO_ANSWER / NO_ANSWER_LOSS are gone (reward-spec 6.5). There is no unanswered episode any more: the
+NO_ANSWER / NO_ANSWER_LOSS are gone. There is no unanswered episode any more: the
 report ladder always emits one, and what used to be "unanswered" is now the `report_level` an
 episode resolved to. Anything here that says "answered" means LEVEL 1-2, i.e. the agent stated it.
 """
@@ -22,7 +22,7 @@ class ArchivedTrace:
     """One line of a traces.jsonl, shaped so `cohortworld_env.reward` can score it.
 
     `reward.messages()` walks `trace.messages`; a trace read back from JSON is a dict of `nodes`.
-    Six lines here mean the rescoring path IS the scoring path (reward-spec 1.3) rather than a
+    Six lines here mean the rescoring path IS the scoring path rather than a
     lookalike of it -- which is the only way a number computed from an archive can be quoted beside
     a number computed during a run.
     """
@@ -88,14 +88,14 @@ _REF_FALLBACK = []
 
 
 def ref_base(d):
-    """The reference forecast `b` for one item, from the PINNED table (reward-spec 6.3).
+    """The reference forecast `b` for one item, from the PINNED table.
 
     `source` is the item's own: PhenoCal items carry `variant`, internal items do not and are
     `"internal"`. Reading it off the item is also what stops this file crashing on the internal
     traces, which it did -- `KeyError: 'variant'` -- on the task that is the actual RL target.
 
     Falls back to the legacy per-variant table only while `official/reference_rates_*.json` has not
-    been built yet, and says so once. The legacy table has the N8 hole (no entry -> no reference at
+    been built yet, and says so once. The legacy table has a coverage hole (no entry -> no reference at
     all for 104/304 internal unseen items); the pinned cascade closes it, so a number computed under
     the fallback is not the number the reward will produce.
     """
@@ -119,8 +119,8 @@ def stated_report(tr):
     """(values, source, malformed) for the report the agent STATED -- ladder levels 1-2 only.
 
     Delegates to `cohortworld_env.reward`: `commit_payload` + `answer_line` + `parse_values` +
-    `well_formed`, i.e. exactly the code the reward runs. There is no separate rule in gen/ any more
-    (D2 / N11 / N14). `well_formed` is `MIN_REPORT` values, every one inside [0, 1]; a report with
+    `well_formed`, i.e. exactly the code the reward runs. There is no separate rule in gen/ any more.
+    `well_formed` is `MIN_REPORT` values, every one inside [0, 1]; a report with
     any value outside is malformed AS A WHOLE and rejected -- no drop, no clamp, no percent rescale.
 
     Use `full_report` when you want what the reward actually scores: this stops at the stated
@@ -147,7 +147,7 @@ def full_report(tr, disease, horizon):
     """(values, level_name, malformed) -- the report the REWARD scores, all four ladder levels.
 
     Never empty: an episode that stated nothing is scored on the last rate it read, and one that
-    read nothing on `FLOOR_REPORT`. That is D4 -- 5.8-18.3% of rollouts used to collapse onto one
+    read nothing on `FLOOR_REPORT`. That is what the ladder is for -- 5.8-18.3% of rollouts used to collapse onto one
     constant worth 1.008 reward units against a 0.098 sd of the informative signal, so "navigated,
     read six cells, format broke" was indistinguishable from "did nothing".
     """
@@ -259,9 +259,9 @@ def analyse(path, label):
             n_malformed += 1
         base = ref_base(d)
         refl = 1.0 - _crps([base], d["true_rate"]) if base is not None else None
-        # Every episode has a report now (reward-spec 1.1), so `cl` is always a real loss and the
+        # Every episode has a report now, so `cl` is always a real loss and the
         # NO_ANSWER sentinel has no referent. `answered` means the agent STATED it (level 1-2), and
-        # the two headlines reward-spec 6.6 requires -- all episodes and stated-only -- are just
+        # the two headlines a score is reported with -- all episodes and stated-only -- are just
         # this list and its `answered` subset.
         cl_new = 1.0 - _crps(vals, d["true_rate"])
         answered = bool(stated)
@@ -285,7 +285,7 @@ def analyse(path, label):
 
     # ---- completion / stop table
     print(f"  stop_condition: {dict(stop)}")
-    print(f"  report_level (reward-spec 6.6): {dict(levels)}"
+    print(f"  report_level: {dict(levels)}"
           f"   malformed reports rejected: {n_malformed}")
     print(f"  NOT STATED by the agent {sum(cats.values())}/{n} = {sum(cats.values())/n*100:.1f}%"
           f" (scored on the ladder, not on a sentinel)  ->  {dict(cats)}")
@@ -309,7 +309,7 @@ def analyse(path, label):
               f"  (traces predate the estimator fix)")
     # Skill is a RATIO OF TWO MEANS and both must be taken over the SAME items. Averaging the model
     # over all n while averaging the reference over only the items that have a base rate is the
-    # N8 defect in tooling form: the internal reference is built from the train split and the unseen
+    # same coverage hole in tooling form: the internal reference is built from the train split and the unseen
     # split is held-out chapters, so 104/304 unseen items have no reference at all. `skill_on`
     # therefore drops any item without one from BOTH sides and prints the n it used.
     def skill_on(rows, tag):

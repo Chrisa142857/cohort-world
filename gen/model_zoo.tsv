@@ -1,19 +1,15 @@
-# The model zoo, in ONE place. serve_on.sh and gen/reasoning_kwargs.py both read this file.
-# Two copies of the alias->repo map already existed (serve_model.sh, serve_on.sh) and the second
-# was a copy-paste of the first; a third would have been the one that drifted.
-# columns: name <TAB> hub-repo-dir <TAB> tool-call-parser <TAB> extra vllm flags ("-" = none)
-qwen3.5-27b	models--Qwen--Qwen3.5-27B	qwen3_xml	--gdn-prefill-backend triton
-qwen3.5-9b	models--Qwen--Qwen3.5-9B	qwen3_xml	--gdn-prefill-backend triton
-qwen3.5-4b	models--Qwen--Qwen3.5-4B	qwen3_xml	--gdn-prefill-backend triton
-qwen3.5-2b	models--Qwen--Qwen3.5-2B	qwen3_xml	--gdn-prefill-backend triton
-qwen32b	models--Qwen--Qwen3-32B	hermes	-
-qwen14b	models--Qwen--Qwen2.5-14B-Instruct	hermes	-
-qwen7b	models--Qwen--Qwen2.5-7B-Instruct	hermes	-
-qwen3b	models--Qwen--Qwen2.5-3B-Instruct	hermes	-
-gemma3-27b	models--google--gemma-3-27b-it	pythonic	-
-gemma3-4b	models--google--gemma-3-4b-it	pythonic	-
-medgemma27b	models--google--medgemma-27b-it	pythonic	-
-medgemma4b	models--google--medgemma-4b-it	pythonic	-
-llama8b	models--meta-llama--Llama-3.1-8B-Instruct	llama3_json	-
-mistral24b	models--mistralai--Mistral-Small-24B-Instruct-2501	mistral	-
-mistral24b-native	models--mistralai--Mistral-Small-24B-Instruct-2501	mistral	--tokenizer-mode mistral --config-format mistral --load-format mistral
+# The open models behind Tables 3 and 4, and how each was served. gen/reasoning_kwargs.py reads this file;
+# nothing else restates it. Resolved per checkpoint (declared model_type, tokenizer, own chat template) for vLLM 0.23.0.
+# columns: name <TAB> hf-repo <TAB> revision <TAB> tool-call-parser <TAB> extra vllm flags ("-" = none) <TAB> chat_template_kwargs (JSON)
+# The tool-call parser and a substitute chat template matter only when a model is driven through tools (the agent
+# rows, all Qwen); the single-turn rows send no tools. The Claude and Gemini rows of Table 3 are vendor APIs.
+qwen3.5-2b	Qwen/Qwen3.5-2B	15852e8c16360a2fea060d615a32b45270f8a8fc	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
+qwen3.5-4b	Qwen/Qwen3.5-4B	851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
+qwen3.5-9b	Qwen/Qwen3.5-9B	c202236235762e1c871ad0ccb60c8ee5ba337b9a	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
+qwen3.6-27b	Qwen/Qwen3.6-27B	6a9e13bd6fc8f0983b9b99948120bc37f49c13e9	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
+gemma3-4b	google/gemma-3-4b-it	093f9f388b31de276ce2de164bdc2081324b9767	pythonic_lenient	--tool-parser-plugin gen/cw_tool_parsers.py --chat-template prompts/substitute_templates/gemma3.jinja	{}
+gemma3-27b	google/gemma-3-27b-it	005ad3404e59d6023443cb575daa05336842228a	pythonic_lenient	--tool-parser-plugin gen/cw_tool_parsers.py --chat-template prompts/substitute_templates/gemma3.jinja	{}
+medgemma4b	google/medgemma-4b-it	290cda5eeccbee130f987c4ad74a59ae6f196408	pythonic_lenient	--tool-parser-plugin gen/cw_tool_parsers.py --chat-template prompts/substitute_templates/gemma3.jinja	{}
+medgemma27b	google/medgemma-27b-text-it	5b667cf2ddcf064085bc90952edb35a0edbfb79c	pythonic_lenient	--tool-parser-plugin gen/cw_tool_parsers.py --chat-template prompts/substitute_templates/gemma3_text.jinja	{}
+llama8b	meta-llama/Llama-3.1-8B-Instruct	0e9e39f249a16976918f6564b8830bc894c89659	llama3_json	-	{}
+mistral24b	mistralai/Mistral-Small-24B-Instruct-2501	9527884be6e5616bdd54de542f9ae13384489724	mistral	--tokenizer-mode mistral --config-format mistral --load-format mistral	{}

@@ -3,11 +3,11 @@
 
     gen/score_cohortworld_phenocal.py --traces <traces.jsonl> --model qwen3.5-9b --out DIR
 
-Emits the same artifact schema as gen/score_claude_arm.py (slope, corr, mae, ece, bss, binary{...})
+Emits the leaderboard's artifact schema (slope, corr, mae, ece, bss, binary{...})
 so the figure scripts can load a CohortWorld cell beside a single-turn cell without a third code
 path. Nothing is restated:
   * the report is read through `arm_audit.full_report` == `cohortworld_env.reward.rate_report`, the
-    exact ladder the reward scored (never empty: D4);
+    exact ladder the reward scored (never empty);
   * the point prediction is the report's median, the same statistic R uses (R = |b-y| - |median(F)-y|);
   * the per-(disease,horizon) floor is built exactly as score_claude_arm.py builds it;
   * slope = np.polyfit(truth, pred, 1)[0], the board's orientation; ACC/F1/AUROC via binary_metrics.evaluate.

@@ -171,7 +171,8 @@ credit = "contribution"  # each rollout is paid its OWN term in the population s
                          # the population AUROC steps by 1/(n_pos*n_neg) and one rollout rarely crosses a
                          # rank. The per-patient concordance steps by 1/n_opposite and always moves.
 num_problems = 32        # UNUSED on the matrix path (it sized the rolling-context deque); kept so a
-                         # fallback run with patients_per_population = 1 reproduces the single-patient layout exactly        # M: this problem plus the 31 most recently scored form the population. 32 is
+                         # fallback run with patients_per_population = 1 reproduces the single-patient layout exactly.
+                         # M: this problem plus the 31 most recently scored form the population. 32 is
                          # the smallest size at which a population AUROC is not dominated by which
                          # handful of patients landed together; the smoke's 4 was for plumbing only.
 min_population = 4       # 8 -> 4, MEASURED both ways rather than chosen.
@@ -300,7 +301,7 @@ ratio = 1.0
 env.taskset.id = "cohortworld-internal"
 env.taskset.split = "train"
 env.taskset.task.patients_per_population = 16   # M: one episode answers 16 patients, so one episode
-                         # IS one population. min_population is 8, so at least half of a population's
+                         # IS one population. min_population is 4, so at least a quarter of a population's
                          # cells must produce a usable prediction before it scores -- the matrix removes
                          # the STALE comparison set, it does not remove the need for cells to act.
 env.taskset.task.reward = "cohort_think_cal"   # computed and logged for comparability; NOT the credit

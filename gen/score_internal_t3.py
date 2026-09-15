@@ -60,7 +60,7 @@ def rows(path, source):
         if not trs:
             continue
         # An episode whose HARNESS never started is not a prediction. `full_report` is the reward's
-        # ladder and by design never returns empty (D4: a rollout that stated nothing is still scored,
+        # ladder and by design never returns empty (a rollout that stated nothing is still scored,
         # on FLOOR_REPORT) -- so the `if not vals` branch below could never fire, and every rollout
         # killed by `HarnessError: failed to prepare uv script ... Bus error` entered the metric as the
         # floor constant, median 0.5. Measured at 7.3% of traces in one training run. The reward must

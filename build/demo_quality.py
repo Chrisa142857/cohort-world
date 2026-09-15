@@ -114,7 +114,7 @@ DOWN = re.compile(r"\b(lower|decrease[sd]?|reduce[sd]?|less likely|smaller|prote
 NEGL = re.compile(r"\b(barely|hardly|negligibl\w*|minimal\w*|essentially the same|much the same|"
                   r"little (?:to no |or no )?(?:change|difference)|no meaningful|broadly similar|"
                   r"close to (?:the|that|this)|unchanged|about the same|similar to)\b", re.I)
-# borrowed verbatim from gen/demo_defect_census.py; they force R2 down without a judge call
+# borrowed verbatim from an earlier defect census; they force R2 down without a judge call
 BOTHWAYS = re.compile(r"\b(conversely|alternatively|on the other hand|or (?:conversely|instead)|"
                       r"whereas|although .{0,60}(?:could|might|may)|however,? (?:some|others|many|it)|"
                       r"paradoxically|either (?:raise|increase)|could also (?:lower|reduce|decrease|increase|raise))\b", re.I)

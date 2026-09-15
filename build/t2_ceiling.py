@@ -15,8 +15,8 @@ The ladder:
   rung1  oracle (a point mass on the truth)
   rung2  the agent (rescored traces from a run directory)
 
-Run:  .venv/bin/python gen/t2_ceiling.py --selfcheck
-      .venv/bin/python gen/t2_ceiling.py --out <rundir>
+Run:  .venv/bin/python build/t2_ceiling.py --selfcheck
+      .venv/bin/python build/t2_ceiling.py --out <rundir>
 """
 import argparse, collections, json, os, random, statistics, sys
 
@@ -25,11 +25,11 @@ from cohortworld_env import reward as R
 from cohortworld_env.lattice import _shared, _band_lo, _atrisk, PANEL
 
 ITEMS = R.CONSTANTS()["items"]
-HORIZ = [1, 2, 3, 5, 10]            # gen/build_items.py HORIZ; asserted against the manifest below
+HORIZ = [1, 2, 3, 5, 10]            # the item builder's HORIZ; asserted against the manifest below
 BOOT, SEED = 1000, 42
 
 # ponytail: the three published disease tables are byte-identical across versions (same md5), so
-# one read of C2's serves all three -- as gen/build_items.py already does.
+# one read of C2's serves all three -- as the item builder already does.
 DIS = {g: json.load(open(f"{PANEL}/CohortWorld_C2_diseases_g{g}.json"))["diseases"] for g in (1, 2, 3)}
 DIDX = {g: {c: i for i, c in enumerate(DIS[g])} for g in (1, 2, 3)}
 
@@ -55,7 +55,7 @@ def is_served(d):
 # --------------------------------------------------------------------------- separability
 
 def wilson(x, n, z=1.96):
-    """Copied from gen/build_edges_pooled.py rather than imported: that module's import pulls the
+    """Copied from build/build_edges_pooled.py rather than imported: that module's import pulls the
     whole edge build. Identity with it is asserted in --selfcheck."""
     if n <= 0:
         return 0.0, 1.0
@@ -393,7 +393,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--selfcheck", action="store_true")
     ap.add_argument("--split", default="unseen")
-    ap.add_argument("--out", help="run directory from gen/newrun.sh")
+    ap.add_argument("--out", help="run directory")
     a = ap.parse_args()
     if a.selfcheck:
         return selfcheck()

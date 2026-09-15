@@ -1,4 +1,4 @@
-"""Acceptance tests for the frozen reward contract (docs/reward-spec.md §8).
+"""Acceptance tests for the frozen reward contract.
 
 Every test that can runs against the REAL released data -- the item set, the lattice, the shipped
 reward -- rather than against hand-made fixtures. That is deliberate and it is the whole point: the
@@ -34,7 +34,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # --------------------------------------------------------------------------- contract
 
 def test_crps_estimator_is_the_fair_one():
-    """§8.1. Pins the n*(n-1) denominator AND the free-outlier property it creates.
+    """Pins the n*(n-1) denominator AND the free-outlier property it creates.
 
     If someone "fixes" `_crps` back to n*n these three numbers all move, and so does every score in
     the project. The free outlier is not a bug to patch: penalising width would break strict
@@ -47,7 +47,7 @@ def test_crps_estimator_is_the_fair_one():
 
 
 def test_two_value_report_is_a_free_lunch_and_is_therefore_rejected():
-    """N1. `commit([0.0, 1.0])` has CRPS exactly 0 for EVERY truth -- maximum reward, zero reads,
+    """`commit([0.0, 1.0])` has CRPS exactly 0 for EVERY truth -- maximum reward, zero reads,
     and a zero-gradient attractor once a GRPO group finds it. `MIN_REPORT` is what closes it, so the
     exploit's existence is asserted here rather than assumed: if the estimator ever changes so that
     this stops being free, the length floor can be revisited on evidence."""
@@ -65,7 +65,7 @@ def test_two_value_report_is_a_free_lunch_and_is_therefore_rejected():
     [0.0, 0.01, 0.5, 1.0, 3.0],
 ])
 def test_out_of_range_rejects_the_whole_report(payload):
-    """§8.2 / D2. No dropping, no clamping, no percent rescale.
+    """No dropping, no clamping, no percent rescale.
 
     Silent dropping is not neutral -- it discards exactly the values that would have hurt, scoring
     the 20 archived out-of-range payloads at mean CRPS 0.1462 against 0.2633 for clamping, which
@@ -73,26 +73,26 @@ def test_out_of_range_rejects_the_whole_report(payload):
     """
     assert not R.well_formed(payload)
     assert R.parse_report(f"ANSWER: {payload}") == []
-    # and the two paths agree, which is the substance of D2
+    # and the two paths agree, which is the substance of the rule
     assert R.parse_values(payload) == [float(x) for x in payload]
 
 
 def test_percent_branch_is_gone():
-    """D2/N11. `_parse_distribution` used to read (1, 100] as a percentage while the commit path
+    """`_parse_distribution` used to read (1, 100] as a percentage while the commit path
     dropped the same values, and `1.0` fell on the wrong side of the split from `1.5`."""
     assert R.parse_values("ANSWER: [1, 2, 3, 4, 5]") == [1.0, 2.0, 3.0, 4.0, 5.0]
     assert R.parse_report("ANSWER: [1, 2, 3, 4, 5]") == []
 
 
 def test_no_module_imports_the_deleted_sentinels():
-    """§8.9. `NO_ANSWER` / `NO_ANSWER_LOSS` have no referent: no episode is unanswered."""
+    """`NO_ANSWER` / `NO_ANSWER_LOSS` have no referent: no episode is unanswered."""
     assert not hasattr(R, "NO_ANSWER")
     import cohortworld_env.taskset as ts
     assert not hasattr(ts, "NO_ANSWER") and not hasattr(ts, "NO_ANSWER_LOSS")
 
 
 def test_constants_are_readable_for_a_run_directory():
-    """D3. A run that cannot say which constants produced its numbers cannot be compared to one.
+    """A run that cannot say which constants produced its numbers cannot be compared to one.
 
     Asserted key by key, and the list of keys is asserted too. This used to check three of eleven
     (`reward_spec_version`, `alpha`, `budget`) and the gap is not academic: a mutation run
@@ -161,7 +161,7 @@ def test_constants_are_readable_for_a_run_directory():
 def test_the_pinned_constants_are_what_the_contract_says():
     """The pinned constants, with the REASON each has its value, checked against the module.
 
-    This table used to live in `docs/ENVIRONMENT_SPEC.md` §2 and be parsed out of the markdown. That
+    This table used to live in a separate design document and be parsed out of the markdown. That
     document was deleted (680 lines that had drifted from the code in 24 places), so
     the table moved here — to the executable half, where it cannot drift unnoticed.
 
@@ -291,7 +291,7 @@ def test_the_pinned_constants_are_what_the_contract_says():
 
 
 def test_the_report_levels_are_the_numbers_the_metric_publishes():
-    """`report_level` is a PUBLISHED metric -- reward-spec 6.6 requires its distribution beside any
+    """`report_level` is a PUBLISHED metric -- its distribution is reported beside any
     score, and an effect can live entirely inside one level -- so the codes are contract, not an
     internal enum. Collapsing `STATED_TEXT` 2.0 onto 1.0 left the suite green, because the only
     assertions on a level were `level in R.LEVEL_NAMES`, which cannot move when the constant moves.
@@ -301,7 +301,7 @@ def test_the_report_levels_are_the_numbers_the_metric_publishes():
                              3.0: "auto_observed", 4.0: "floor"}
 
 
-# --------------------------------------------------------------------------- D1: the wiring
+# --------------------------------------------------------------------------- the wiring
 
 @pytest.mark.parametrize("taskset_id,taskset,task,data", [
     ("cohortworld-internal", RateTaskset, "RateTask", "RateData"),
@@ -309,7 +309,7 @@ def test_the_report_levels_are_the_numbers_the_metric_publishes():
     ("cohortworld-delta", DeltaTaskset, "DeltaTask", "DeltaData"),
 ])
 def test_each_taskset_id_rebuilds_its_own_task_class(taskset_id, taskset, task, data):
-    """D1. The served worker discards the object `load()` yielded and rebuilds it as
+    """The served worker discards the object `load()` yielded and rebuilds it as
     `type(taskset).task_type()`, so a taskset yielding three classes silently scores two of them by
     the third's rubric. That is how 120 T1 rollouts came back a constant -1.0."""
     module = loaders._import_plugin(taskset_id, "taskset", "verifiers.v1.tasksets")
@@ -320,7 +320,7 @@ def test_each_taskset_id_rebuilds_its_own_task_class(taskset_id, taskset, task, 
 
 
 def test_data_classes_reject_a_row_that_is_missing_its_own_fields():
-    """D1's other half. The one-data-class workaround gave every task-specific field a default, so a
+    """The wiring's other half. The one-data-class workaround gave every task-specific field a default, so a
     T1 row validated as a T3 row and scored as `true_rate = -1.0` forever instead of failing."""
     with pytest.raises(Exception):
         RateData(idx=0, prompt="x", version="C2")            # no disease/horizon/true_rate
@@ -331,7 +331,7 @@ def test_data_classes_reject_a_row_that_is_missing_its_own_fields():
 # --------------------------------------------------------------------------- T1 geometry
 
 def test_dist_is_zero_only_for_the_same_cohort():
-    """§8.4. `dist == 0` iff the state IS the target, on every released cohort of every version and
+    """`dist == 0` iff the state IS the target, on every released cohort of every version and
     on 1000 random pairs each. Coarseness must be in the axis set or two cohorts recorded at
     different granularity read as distance 0."""
     random.seed(42)
@@ -352,11 +352,11 @@ def test_dist_is_zero_only_for_the_same_cohort():
 # --------------------------------------------------------------------------- the other defects
 
 def test_reference_rate_is_defined_for_every_unseen_item():
-    """N8. 104 of the OLD set's 304 internal unseen items had no train (disease, horizon) base rate,
+    """104 of the OLD set's 304 internal unseen items had no train (disease, horizon) base rate,
     and the old code returned 0.0 -- a value indistinguishable from a genuinely perfect reference. It
     inflated |skill| by about 2.4x.
 
-    The count is the released item set's (docs/ENVIRONMENT_SPEC.md). It is
+    The count is the released item set's. It is
     pinned rather than read off the file, because the property under test is "defined for EVERY
     item" and a loop over a truncated or empty file passes it vacuously.
     """
@@ -370,7 +370,7 @@ def test_reference_rate_is_defined_for_every_unseen_item():
 
 
 def test_disease_resolution_refuses_a_code_it_does_not_have():
-    """N2. A one-character query used to match the first disease whose English NAME contained that
+    """A one-character query used to match the first disease whose English NAME contained that
     letter, and `observe` then served a real rate for the wrong outcome under `status: published`."""
     lat = _shared("C2")
     for bad in ("H", "M", "N", "K", "C56", "zzz"):
@@ -380,7 +380,7 @@ def test_disease_resolution_refuses_a_code_it_does_not_have():
 
 
 def test_legal_move_summary_truncates_by_default():
-    """N4. The truncation was written, documented and never switched on, because neither caller
+    """The truncation was written, documented and never switched on, because neither caller
     passed the argument: 0 of 1,017 served move groups in one run were cut."""
     from cohortworld_env import legal_moves as LM
     lat = _shared("C2")
@@ -393,12 +393,12 @@ def test_legal_move_summary_truncates_by_default():
 
 
 def test_delta_taskset_serves_only_answerable_items():
-    """N3/N12/N13. A T2 item names its edge in one lattice and its outcome at one granularity, and on
+    """A T2 item names its edge in one lattice and its outcome at one granularity, and on
     the OLD item set 417 of 625 were different versions -- an agent standing on the edge cannot read
     the outcome -- while 32 more named a cross-version edge the action set withholds. The taskset
     silently dropped them, so the three splits served different tasks.
 
-    The item builder repairs it at the SOURCE (`gen/t2_compose.py`): every emitted item satisfies the
+    The item builder repairs it at the SOURCE: every emitted item satisfies the
     clause, so the served count now EQUALS the file's length and the skip count is zero. That is the
     stronger property and it is what is asserted -- a served count alone would still pass if the
     builder regressed and the taskset went back to dropping a third of the file.
@@ -417,7 +417,7 @@ def test_delta_taskset_serves_only_answerable_items():
 
 
 def test_t2_reference_class_is_the_hedge_the_floor_produces():
-    """C7/S4. `T2_PRIOR_CLASS` was justified as "the train-split majority, 0.3823 of 429" -- and on
+    """`T2_PRIOR_CLASS` was justified as "the train-split majority, 0.3823 of 429" -- and on
     the OLD item set the SERVED train majority was `down` (46/125), not `indistinguishable`
     (43/125). The constant was right and the reason was not: it is the reference because it is what
     the ladder's floor rung produces, so "did nothing" scores R = 0.
@@ -447,7 +447,7 @@ def test_t2_reference_class_is_the_hedge_the_floor_produces():
 
 
 def test_t2_degenerate_optimum_exists_and_alpha_demotes_it():
-    """§4.1/§4.3, with the correction the arithmetic forces.
+    """The T2 degenerate-optimum argument, with the correction the arithmetic forces.
 
     Reproduces Prop. 9(b) in our own item set: with a PURE proper score an honest reporter whose
     pick is systematically WRONG (q = 0) scores 0.83805, above every policy with q < 0.75, and the
@@ -459,7 +459,7 @@ def test_t2_degenerate_optimum_exists_and_alpha_demotes_it():
     reward is monotone in accuracy over [1/3, 1] -- the region a trained policy occupies -- for both
     a point-mass and an honest reporter.
 
-    What it does NOT do, contrary to reward-spec 4.3: it does not make `r(q)` increasing BELOW
+    What it does NOT do, contrary to the original derivation: it does not make `r(q)` increasing BELOW
     chance. That derivation assumes the decision tracks the pick, which is true of a point mass and
     false of the honest reporter that creates the degeneracy -- below chance the honest report's
     median sits on the hedge class, so `R` is constant there and no alpha can tilt it. Asserted here
@@ -505,7 +505,7 @@ def test_t2_degenerate_optimum_exists_and_alpha_demotes_it():
 
 
 def test_commit_accepts_a_string_payload():
-    """N6. FastMCP validates against the annotation before the tool body runs, so a `list[float]`-only
+    """FastMCP validates against the annotation before the tool body runs, so a `list[float]`-only
     signature turned a complete answer into an error message carrying neither the values nor the word
     "committed" -- 3 of 360 archived rollouts never recovered and were scored the flat worst case."""
     import asyncio
@@ -524,10 +524,10 @@ def test_the_version_names_the_code_it_ships_with():
 
     Mutating `ENV_VERSION` to "9.9.9" once left all 276 tests GREEN. A version nothing checks
     is not a version, it is a comment that happens to be written into every run directory -- and the
-    whole of D3 is that `NO_ANSWER` moved 0.0 -> -1.0 and `BUDGET` 12 -> 26 on one day with nothing
-    on disk saying so. `REWARD_SPEC_VERSION` was caught only by ACCIDENT: `_reference_path` globs the
-    table by that string and raises when the glob comes back empty, so renaming the table alongside a
-    bump would have turned it green again.
+    whole unrecorded-drift failure is that `NO_ANSWER` moved 0.0 -> -1.0 and `BUDGET` 12 -> 26 on
+    one day with nothing on disk saying so. `REWARD_SPEC_VERSION` was caught only by ACCIDENT:
+    `_reference_path` globs the table by that string and raises when the glob comes back empty, so
+    renaming the table alongside a bump would have turned it green again.
 
     `reward.semantic_hash()` is a content hash of every module whose code can change a reward, with
     comments, docstrings and formatting normalised away by `ast.unparse`. Both directions are red:
@@ -544,13 +544,13 @@ def test_the_version_names_the_code_it_ships_with():
     assert R.ENV_VERSION in R.VERSIONED_SEMANTICS, (
         f"ENV_VERSION is {R.ENV_VERSION!r} and no code is recorded under it.\n"
         f"Either the version was bumped with no semantic change -- put it back -- or the change is\n"
-        f"real: add {R.ENV_VERSION!r}: {got!r} to reward.VERSIONED_SEMANTICS, and say what moved in\n"
-        f"docs/ENVIRONMENT_SPEC.md.")
+        f"real: add {R.ENV_VERSION!r}: {got!r} to reward.VERSIONED_SEMANTICS, and say what moved\n"
+        f"in a comment beside the entry.")
     assert R.VERSIONED_SEMANTICS[R.ENV_VERSION] == got, (
         f"the frozen surface changed under ENV_VERSION {R.ENV_VERSION!r}: recorded "
         f"{R.VERSIONED_SEMANTICS[R.ENV_VERSION]!r}, code hashes to {got!r}.\n"
-        f"A reward change is a MAJOR bump. Raise ENV_VERSION (and REWARD_SPEC_VERSION if any value\n"
-        f"in docs/ENVIRONMENT_SPEC.md moved), add the new pair to reward.VERSIONED_SEMANTICS, and\n"
+        f"A reward change is a MAJOR bump. Raise ENV_VERSION (and REWARD_SPEC_VERSION if any pinned\n"
+        f"reward constant moved), add the new pair to reward.VERSIONED_SEMANTICS, and\n"
         f"record which scores it invalidates. Diff the surface with:\n"
         f"    python -c 'import cohortworld_env.reward as R; print(R._semantic_source())'")
 
@@ -560,7 +560,8 @@ def test_the_hash_covers_every_module_that_can_change_a_reward():
 
     Every module the frozen packages import must be in `_SEMANTIC_MODULES` or the hash is blind to
     it -- which is how `legal_moves.summary(per_axis=6)` sat outside the contract through the freeze.
-    `cohortworld_patient` is excluded on purpose and asserted excluded, so "not in the list" is a
+    A patient-facing package, which is not part of this release, is excluded on purpose and asserted
+    excluded, so "not in the list" is a
     decision rather than an oversight.
     """
     import pathlib
@@ -652,8 +653,8 @@ def test_a_missing_panel_raises_at_scoring_time_instead_of_paying_more():
 
 def test_the_move_listing_is_truncated_at_the_pinned_width():
     """`per_axis` was a DEFAULT ARGUMENT of `legal_moves.summary` through the first freeze: in no
-    config.yaml, no `CONSTANTS()`, no line of §2 -- so 6 could become 3, moving the achievable policy
-    set (which §8 calls MAJOR) while every score stayed formally comparable. It withholds 13,179
+    config.yaml, no `CONSTANTS()`, no pinned-constants table -- so 6 could become 3, moving the achievable
+    policy set (a MAJOR change) while every score stayed formally comparable. It withholds 13,179
     legal moves across the archive and **no action reveals them**, so the width is contract."""
     from cohortworld_env import legal_moves as LM
     # SIX, written out. Reading `R.PER_AXIS` on both sides is self-referential -- the expected width

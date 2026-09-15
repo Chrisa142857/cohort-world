@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""The two open interactions `docs/item-rendering-spirit.md` flags, measured, plus the ladder.
+"""The two open interactions of the item-rendering principles, measured, plus the ladder.
 
-The doc leaves two things undefined and this script settles both with counts off the released
-panel. Nothing here reads a patient record, builds an item, or touches the frozen packages.
+The principles: (1) an item carries only its target cohort's own released description; (2) the only
+rewrite is de-grouping the age band to `about xx age`; (3) difficulty comes only from dials that
+remove or coarsen, so no item is more precise than its source. They leave two things undefined and
+this script settles both with counts off the released panel. Nothing here reads a patient record,
+builds an item, or touches the frozen packages.
 
   1. AGE-BAND vs COARSENESS. `coarseness` is `<onset-scheme>|icd?-opcs?-bnf?`. Principle 2 rewrites
-     `axes.age_band` to `about xx age`. The question the doc asks is whether that rewrite makes two
+     `axes.age_band` to `about xx age`. The open question is whether that rewrite makes two
      released cohorts render identically -- an ambiguity that comes from the FORMAT rather than
      from a difficulty dial. Measured as a straight collapse count on the rendered description, per
      version, decomposed by cause.
@@ -28,7 +31,7 @@ Two definitions carry the whole thing, and both are chosen to match code that al
   * The ONSET BAND (`(first recorded 45+)`) is a SETTING, not a constant. `t3_render.axval` drops
     it unconditionally and says so; §1e prices that choice instead of inheriting it.
 
-Rendering may only ever go COARSER than the target. Principle 3 of the doc forbids an item that is
+Rendering may only ever go COARSER than the target. Principle 3 forbids an item that is
 more precise than its source, so the "zoom in" half of dial B does not exist on the rendering side:
 the item is the target coarsened, and `zoom(finer)` is the agent's inverse.
 """
@@ -140,9 +143,9 @@ def section1(out, panels, sheet) -> None:
     T.p(out, "\n== 1. THE AGE-BAND / COARSENESS INTERACTION "
              "=====================================================")
     T.p(out, "Principle 2 rewrites `axes.age_band` to `about xx age`. `coarseness`'s first component"
-             " names an\nONSET scheme. The doc asks whether they are the same field. They are not, "
+             " names an\nONSET scheme. The open question is whether they are the same field. They are not, "
              "and the two rows below\nare the proof; the collapse count that follows is the "
-             "question it actually wanted answered.\n")
+             "question actually worth answering.\n")
 
     # 1a -- is the de-grouping map injective?
     T.p(out, "1a. `axes.age_band` per version, and whether `about <midpoint>` is injective on it")
@@ -213,7 +216,7 @@ def section1(out, panels, sheet) -> None:
         T.p(out, f"  {v:9} colliding pairs under the spirit rendering: {npair}")
     T.p(out, "  The reason is 1a: `about <midpoint>` is a bijection on a 5-year band, and the onset "
              "scheme is\n  written into the `(first recorded ...)` clause of every coded axis, "
-             "which principle 2 does not\n  touch. The two fields the doc feared were one field "
+             "which principle 2 does not\n  touch. The two fields suspected of being one field "
              "are two, and they do not interact.\n")
 
     # 1e -- the price of dropping the onset band, which t3_render does silently
@@ -358,7 +361,7 @@ def section2(out, panels, args, sheet) -> dict:
         T.p(out, f"  {label_z(z, onset, full):32} {st.median(c):>7.0f} "
                  f"{T.share(c, lambda x: x == 1):>7.1%} {T.share(c, lambda x: x >= 5):>6.1%} "
                  f"{T.share(c, lambda x: LO <= x <= HI):>7.1%} {max(c):>7} {p90(sp):>11.4f}")
-    T.p(out, "  NOTE on the doc's own mask table. Its `0 axes masked` row reads median 1, 65.5% "
+    T.p(out, "  NOTE on the earlier hand-recorded mask table. Its `0 axes masked` row reads median 1, 65.5% "
              "unique, 0.8% >=5,\n  p90 spread 0.0000. The first three columns are the "
              "onset-DROPPED key (measured here 1 / 63.9% /\n  0.8%); the fourth is the "
              "onset-STATED key (0.0000 here, against 0.0474 dropped). One row, two\n  settings -- "
@@ -592,7 +595,7 @@ def main() -> int:
     if a.selfcheck:
         return selfcheck()
     out = open(a.out, "w") if a.out else sys.stdout
-    T.p(out, "THE TWO OPEN INTERACTIONS OF docs/item-rendering-spirit.md, MEASURED")
+    T.p(out, "THE TWO OPEN INTERACTIONS OF THE ITEM-RENDERING PRINCIPLES, MEASURED")
     T.p(out, f"panel {PANEL}   seed {a.seed}   bootstrap {a.n_boot}   items {a.n}")
     panels = {v: light(v) for v in VERSIONS}
     sheet: dict = {"seed": a.seed, "n_boot": a.n_boot, "window": [LO, HI], "ladder": []}

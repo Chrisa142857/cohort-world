@@ -13,9 +13,9 @@
 #     (official/CohortWorld_pooled_edges.jsonl) plus the environment's generalising
 #     move, so every one of them is a move the agent can actually take.
 #
-# The tag is part of the ANSWER. gen/sft/check_cohort_think_mask.py renders a sample through prime-rl's
-# own renderer and shows 199 of 382 tokens carry loss, the trained span running from <cohort-think> to
-# </cohort-think><|im_end|>, the user turn masked -- and shows the check can fail, by moving the tag into
+# The tag is part of the ANSWER. A mask check rendered a sample through prime-rl's
+# own renderer and showed 199 of 382 tokens carry loss, the trained span running from <cohort-think> to
+# </cohort-think><|im_end|>, the user turn masked -- and showed the check can fail, by moving the tag into
 # the user turn and watching it go untrained.
 max_steps = 72          # 1,753 train samples at batch_size 48 is 36 steps per epoch, so this is exactly two
 

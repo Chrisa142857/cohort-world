@@ -7,7 +7,7 @@ from before the lattice was rebuilt, so 88% of the cohort keys they referenced n
 longer resolved and their prompts rendered as `(cohort C1:... not found)`. They had been marked
 SUPERSEDED for days while still parsing, still importing, and still shadowing the live `LocateData` /
 `LocateTask` names that `internal.py` defines -- 220 lines of dead code carrying two live-looking
-class names (N15). Deleted rather than annotated a third time.
+class names. Deleted rather than annotated a third time.
 
 The live tasksets are:
 
@@ -36,9 +36,9 @@ import verifiers.v1 as vf                                    # noqa: F401  (cont
 from .reward import (BUDGET, GRACE, _ID_RE, _NUM_RE, answer_line, commit_payload,  # noqa: F401
                      crps, messages, parse_report, tool_results)
 
-# Compatibility aliases. `gen/direct_ask.py` and `cohortworld_patient` import these names; pointing
-# them at `reward` IS D2's fix -- there is now one extraction rule in the project and every caller
-# gets it, instead of the four disagreeing copies the audit found (N11/N14).
+# Compatibility aliases. Older callers import these names; pointing
+# them at `reward` IS the fix -- there is now one extraction rule in the project and every caller
+# gets it, instead of the four disagreeing copies the audit found.
 _answer_line = answer_line
 _parse_distribution = parse_report
 

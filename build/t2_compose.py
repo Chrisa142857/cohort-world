@@ -3,14 +3,14 @@
 """T2's item set, settled: the age-band conflict, the supply repair, and the split targets.
 
 CPU only. Reads the frozen environment, the pooled edge table and PhenoCal's published panel;
-edits none of them. Reuses `gen/t2_ceiling.py` for every policy and every reward (so the ladder
-here IS the published one) and `gen/t2_spirit.py` for the item record.
+edits none of them. Reuses `build/t2_ceiling.py` for every policy and every reward (so the ladder
+here IS the published one) and `build/t2_spirit.py` for the item record.
 
 Six questions, in the order the evidence forces them:
 
-  §0 THE BIJECTION   `docs/t2-resample-spec.md` §3 sizes the rebuild off a column called
+  §0 THE BIJECTION   The rebuild was sized off a column called
                      "after granularity alignment" (non-age 1,052 / 58 / 68). That column is
-                     `gen/t2_supply.py`'s `bal any-gran`, which counts separable cells with the
+                     the supply scan's `bal any-gran`, which counts separable cells with the
                      server's disease clause LIFTED. This section measures whether lifting it is
                      reachable. It is not: version <-> outcome granularity is a bijection, the
                      three disease tables are pairwise disjoint, and `DeltaTaskset.load` tests
@@ -38,8 +38,8 @@ Six questions, in the order the evidence forces them:
                      Measured, not argued: one-operation-apart cohort pairs, the cells they share,
                      and the Wilson-separable direction-balanced supply those cells carry.
 
-Run:  .venv/bin/python gen/t2_compose.py --selfcheck
-      .venv/bin/python gen/t2_compose.py --out <rundir>/artifacts/<name>.txt [--emit <itemdir>]
+Run:  .venv/bin/python build/t2_compose.py --selfcheck
+      .venv/bin/python build/t2_compose.py --out <rundir>/artifacts/<name>.txt [--emit <itemdir>]
 """
 import argparse, collections, hashlib, json, os, random, re, statistics, sys
 
@@ -89,7 +89,7 @@ IND_CAP = 40000
 # --------------------------------------------------------------------------- pool
 
 def split_of(sid, ratio=RATIO):
-    """`gen/build_items.py:split_of` generalised to a ratio. At (80, 10) it is that function
+    """The item builder's `split_of` generalised to a ratio. At (80, 10) it is that function
     verbatim, which --selfcheck asserts on all 625 shipped T2 items."""
     h = int(hashlib.md5(f"cwsplit2:{sid}".encode()).hexdigest(), 16) % 100
     a, b = ratio
@@ -107,7 +107,7 @@ def build_pool(clause4=True):
     """Every (edge, granularity, horizon, disease) cell the server can answer, per (axis, op).
 
     `clause4=False` is the NEGATIVE CONTROL: it keeps cells whose disease is not in the edge
-    version's table, which is what `gen/build_items.py` does and why 428 of its 625 items are
+    version's table, which is what the earlier item builder does and why 428 of its 625 items are
     dropped at serve time. §1 builds both and checks the servable fraction of each.
     """
     lat = {v: _shared(v) for v in GRAN}
@@ -238,7 +238,7 @@ def hrow(tag, sp, h):
 # --------------------------------------------------------------------------- §0 / selfcheck
 
 def bijection_report():
-    """Is `bal any-gran` -- the column docs/t2-resample-spec.md §3 sizes the rebuild off -- real?"""
+    """Is `bal any-gran` -- the column the rebuild was sized off -- real?"""
     lat = {v: _shared(v) for v in GRAN}
     dis = {g: json.load(open(f"{PANEL}/CohortWorld_C2_diseases_g{g}.json"))["diseases"]
            for g in (1, 2, 3)}
@@ -409,8 +409,8 @@ def main():
 
     # ---------------- §0
     P("\n=== §0 THE `any-gran` COLUMN IS NOT REACHABLE ===")
-    P("  docs/t2-resample-spec.md §3 sizes the rebuild at non-age 1,052 / 58 / 68, taken from")
-    P("  gen/t2_supply.py's `bal any-gran` -- the balanced count with the server's disease clause")
+    P("  The rebuild was sized at non-age 1,052 / 58 / 68, taken from")
+    P("  the supply scan's `bal any-gran` -- the balanced count with the server's disease clause")
     P("  LIFTED. Lifting it is not a builder decision:")
     L.extend(bl)
     P("  So the clause-4 fix cannot ADD a single item. It stops the builder emitting items the")
@@ -421,7 +421,7 @@ def main():
     P("\n=== §1 THE SUPPLY REPAIR: what it actually gives ===")
     bal = balanced(pool, ALL, RATIO, BAL_KEY)
     bal8 = balanced(pool, ALL, (80, 10), ("size",))
-    P("  `bal @80/10/10, size-only` is the like-for-like number the spec's table quotes as `bal`.")
+    P("  `bal @80/10/10, size-only` is the like-for-like number for the sizing's `bal` column.")
     P(f"  {'(axis, op)':<20}{'train':>8}{'seen':>7}{'unseen':>8}   |{'train':>8}{'seen':>7}"
       f"{'unseen':>8}   (design ratio {RATIO[0]}/{RATIO[1]}/{100 - sum(RATIO)}, bal on "
       f"{'+'.join(BAL_KEY)})")
@@ -434,7 +434,7 @@ def main():
     P(f"  {'NON-AGE TOTAL':<20}{na8['train']:>8,}{na8['seen']:>7,}{na8['unseen']:>8,}"
       f"   |{na['train']:>8,}{na['seen']:>7,}{na['unseen']:>8,}")
     P("")
-    P(f"  CLAIM  docs/t2-resample-spec.md: the fix takes non-age balanced supply 316/32/38 "
+    P(f"  CLAIM  rebuild sizing: the fix takes non-age balanced supply 316/32/38 "
       f"-> 1,052/58/68.")
     P(f"  FOUND  it gives {na8['train']}/{na8['seen']}/{na8['unseen']} at the same ratio and the "
       f"same balance key -- i.e. exactly the 316/32/38 that was already there.")
@@ -489,8 +489,8 @@ def main():
     P("  (1) A T2 prompt STATES NO COHORT. `internal.DeltaTaskset.load` renders the operation")
     P("      clause, the disease and the horizon and nothing else -- deliberately, because")
     P("      rendering the from-cohort pins answer_delta on 625/625 items. So the spirit's dial A")
-    P("      (mask) and dial B (zoom) have no surface to act on in T2, principle 1 is satisfied")
-    P("      vacuously, and principle 2 has exactly ONE place to bite: `_t2_clause`'s age branch,")
+    P("      (mask) and dial B (zoom) have no surface to act on in T2, `released text only` is met")
+    P("      vacuously, and age de-grouping has exactly ONE place to bite: `_t2_clause`'s age branch,")
     P("      `the second is in the {code} age band instead`.")
     P("  (2) That branch lives in `cohortworld_env/internal.py`, one of the seven modules")
     P("      `reward.semantic_hash()` binds. De-grouping it to `about 72` is a PROMPT SENTENCE")

@@ -254,7 +254,7 @@ index 739cd6e..f18df47 100644
 +    from the orchestrator process."""
 +
 +    benchmark_repo: str | None = None
-+    """Path to the benchmark repository whose `gen/binary_metrics.py` and `gen/demo_quality.py` DEFINE
++    """Path to the benchmark repository whose `gen/binary_metrics.py` and `build/demo_quality.py` DEFINE
 +    the AUROC, the slope and the format rule. Imported, never restated: a second copy here would drift
 +    from the judge the results are quoted against. Falls back to $CW_REPO."""
 +

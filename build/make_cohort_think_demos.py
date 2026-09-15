@@ -32,7 +32,7 @@ from cohortworld_env.lattice import _shared, OPCS_CH, BNF_CH            # noqa: 
 from code_descriptions import describe_icd10                            # noqa: E402
 # ACCEPTANCE. The demonstration is scored on its REASONING as well as its number:
 #   A = w_proc * (R1..R6)/12 + w_num * num_score/0.75,  behind seven hard gates.
-# The rubric, the gates, the regexes and num_score all live in gen/demo_quality.py and are imported from
+# The rubric, the gates, the regexes and num_score all live in build/demo_quality.py and are imported from
 # there, never restated: this file parses argv at import time so it cannot be imported the other way, and
 # a second copy of a direction regex is a copy that drifts.
 from demo_quality import (JARGON, SIGNED, PER_K, UP, DOWN, num_score, quality, add_args, cfg_from,

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # release-gate: allow-file -- ran against the private UKB extract; shipped for provenance, paths shown as they were
-"""What `docs/item-rendering-spirit.md` implies for T3 (rate), measured rather than asserted.
+"""What the item-rendering spirit implies for T3 (rate), measured rather than asserted.
+
+The spirit: an item is its target cohort's own released description, age band de-grouped, degraded
+only by dials the agent can invert (mask an axis, coarsen a code).
 
 Three questions, one script, because they share the candidate machinery:
 
@@ -21,7 +24,7 @@ Three questions, one script, because they share the candidate machinery:
   C. THE EXTERNAL SPLIT. Whether dials A and B are definable on PhenoCal cohorts at all, counted
      off the released panel and the axes sidecar.
 
-The estimator, the grid and the orientation are copied from `gen/calibration_sweep.py` deliberately
+The estimator, the grid and the orientation are copied from an earlier calibration sweep deliberately
 -- the claim is a COMPARISON with the external optimum, so the two must be measured the same way:
 
     level   m' = w*median + (1-w)*base_rate
@@ -44,11 +47,11 @@ from cohortworld_env import reward as R
 from cohortworld_env.lattice import PANEL
 
 AXES = ("age_band", "sex", "icd", "opcs", "bnf")
-WS = [0.0, 0.25, 0.5, 0.6, 0.7, 0.8, 1.0]     # gen/calibration_sweep.py, verbatim
+WS = [0.0, 0.25, 0.5, 0.6, 0.7, 0.8, 1.0]     # the calibration sweep's grid, verbatim
 SP = [0.0, 0.5, 1.0, 2.0, 3.0, 5.0]
 GRID = [(w, s) for w in WS for s in SP]
 TARGET_LO, TARGET_HI = 2, 8                    # the spirit's candidate-count window
-POP_ZERO_SHARE = 0.727                         # gen/build_items.py, published with the item set
+POP_ZERO_SHARE = 0.727                         # published with the item set
 PHENOCAL = os.environ.get(
     "CW_PHENOCAL", "/ram/USERS/ziquanw/digitaltwinreward/ukb_qa_brain/output_panel")
 
@@ -89,7 +92,7 @@ def axval(s: dict, a: str):
     after de-grouping: the onset band is governed by `coarseness`'s first component, which is a
     granularity of its own and not part of "which codes are on this axis". Keeping the index in the
     key makes 97.7% of C2 states unique at mask=0 and the whole exercise vacuous; dropping it
-    reproduces the measured mask=0 row of docs/item-rendering-spirit.md (median 1, 0.8% with >=5).
+    reproduces the measured mask=0 row (median 1, 0.8% with >=5).
     """
     v = s["axes"][a]
     return v if a in ("age_band", "sex") else tuple(sorted(c for c, _ in v))
@@ -152,7 +155,7 @@ def section_a(states, out) -> dict:
     for ms, n in by_pat.most_common(10):
         p(out, f"    {'+'.join(ms):32} {n:>6} states ({n/len(states):.1%})")
 
-    # The doc's one open interaction: does `coarseness`'s first component collide with principle 2?
+    # One open interaction: does `coarseness`'s first component collide with age-band de-grouping?
     onset = collections.Counter(s["coarseness"].split("|")[0] for s in states)
     widths = collections.Counter()
     for s in states:
@@ -173,7 +176,7 @@ def section_a(states, out) -> dict:
 
 def draw_items(states, n, seed):
     """The archived T3 draw, minus the patient narrative: one cohort, one published (horizon,
-    disease) cell, 50/50 zero / non-zero stratum (`gen/build_items.py` ZERO_FRACTION=0.5).
+    disease) cell, 50/50 zero / non-zero stratum (ZERO_FRACTION=0.5).
 
     A uniform draw over published cells is NOT an option and is not a judgement call: 96.6% of C2
     cells are exactly zero, so it would ask "is it zero" 29 times out of 30 and the optimum would be
@@ -252,7 +255,7 @@ def quantiles5(xs) -> list[float]:
 
 
 def recal(vals, base, w, s):
-    """gen/calibration_sweep.py:score, one item's worth."""
+    """The calibration sweep's score, one item's worth."""
     m = st.median(vals)
     mp = w * m + (1 - w) * base
     if not m:
@@ -290,7 +293,7 @@ def loss_matrix(states, items, cand_of, diseases, out, label, weighted=False):
     """L[item, grid cell] = CRPS, plus the read-nothing floor per item and the candidate count.
 
     Scored once; the bootstrap then only averages, which is what makes 1000 resamples over 42 cells
-    cheap. The floor is `gen/calibration_sweep.py`'s own comparator -- the base rate spread +/-50%,
+    cheap. The floor is the calibration sweep's own comparator -- the base rate spread +/-50%,
     a policy that never reads anything -- because an optimum that does not beat it says the item set
     has no discrimination to find, whichever direction it points.
     """
@@ -459,7 +462,7 @@ def main():
     items = draw_items(states, a.n, a.seed)
     p(out, "\n== B. THE (w, s) OPTIMUM VERSUS MASK LEVEL "
            "=======================================================")
-    p(out, f"Estimator, grid and orientation copied from gen/calibration_sweep.py. Lower CRPS is "
+    p(out, f"Estimator, grid and orientation copied from the calibration sweep. Lower CRPS is "
            f"better.\nExternal optimum for comparison: w ~ 0.25, s ~ 2-3.\n"
            f"Sampled items: {len(items)} (50/50 zero / non-zero stratum, as the item set is built)")
 

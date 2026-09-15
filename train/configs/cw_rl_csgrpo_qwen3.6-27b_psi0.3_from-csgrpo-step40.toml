@@ -28,7 +28,7 @@
 #   `cw_observe` accepts the chapter word the question itself uses (a wider action space than the
 #   configurations measured below had, so their scores are not comparable with this one's).
 #   min_population = 4, success_buffer = 128, credit_turn = "action", echo_alpha = 0.1, M = 16, N = 8,
-#   inflight 26. The algorithm (cs_grpo.py) also:
+#   inflight 22. The algorithm (cs_grpo.py) also:
 #     * REFUSES a single-label population in `contribution_metric` instead of returning the slope term
 #       at double weight -- a defect found in pre-launch review and reproduced by execution
 #       (single-label 0.6649933065595717, bit-identical to the same call with w_auroc=0).
@@ -122,10 +122,7 @@
 #     comparison group verbatim from the frozen edge table and whose closing line is the adjustment.
 #     The policy therefore already emits the <cohort-think> block the format term scores, which is what
 #     the 2B smoke could not do (no block -> no declaration -> no population -> metric identically zero).
-max_steps = 20           # the 9B stage one's compression saturated by step 36-39 (2.4% empty-arg commits at
-                         # steps 1-8 -> 100% at 39-100), so 50 steps is enough to see whether the delta
-                         # term reverses the declaration magnitude. Not a budget claim: extend it if the
-                         # |Adjustment| median is still moving at 50.
+max_steps = 20           # 20 steps; the 9B stage ran 50.
 seq_len = 16384
 
 [run]
@@ -149,13 +146,7 @@ keep_interval = 10
 
 [deployment]
 num_train_gpus = 6
-num_infer_gpus = 2       # 2 -> 1 for the 48 GiB-card node, inherited from stage one's 96 GiB-card node shape. NOT a tuning choice:
-                         # the 96 GiB-card node's 96 GiB cards left room for two inference ranks; the 48 GiB-card node's are 48 GiB
-                         # with other users resident, and a TRAINING rank needs 6x the bf16 weights /
-                         # num_train_gpus = 30,960 MiB, which only four of the six cards can offer. The
-                         # arithmetic forbids shrinking the TRAINING side instead: fewer training cards
-                         # raises the per-card requirement (2 cards -> 53,841 MiB/card, impossible), so
-                         # the inference side is the only one that can give.
+num_infer_gpus = 2
 
 [model]
 name = "checkpoints/csgrpo-qwen3.6-27b-step40_bf16"  # the bf16 export of the previous stage (SFT or the earlier RL run)
@@ -189,7 +180,8 @@ credit = "contribution"  # each rollout is paid its OWN term in the population s
                          # the population AUROC steps by 1/(n_pos*n_neg) and one rollout rarely crosses a
                          # rank. The per-patient concordance steps by 1/n_opposite and always moves.
 num_problems = 32        # UNUSED on the matrix path (it sized the rolling-context deque); kept so a
-                         # fallback run with patients_per_population = 1 reproduces the single-patient layout exactly        # M: this problem plus the 31 most recently scored form the population. 32 is
+                         # fallback run with patients_per_population = 1 reproduces the single-patient layout exactly.
+                         # M: this problem plus the 31 most recently scored form the population. 32 is
                          # the smallest size at which a population AUROC is not dominated by which
                          # handful of patients landed together; the smoke's 4 was for plumbing only.
 min_population = 4       # 8 -> 4, MEASURED both ways rather than chosen.
@@ -357,7 +349,7 @@ ratio = 1.0
 env.taskset.id = "cohortworld-internal"
 env.taskset.split = "train"
 env.taskset.task.patients_per_population = 16   # M: one episode answers 16 patients, so one episode
-                         # IS one population. min_population is 8, so at least half of a population's
+                         # IS one population. min_population is 4, so at least a quarter of a population's
                          # cells must produce a usable prediction before it scores -- the matrix removes
                          # the STALE comparison set, it does not remove the need for cells to act.
 env.taskset.task.reward = "cohort_think_cal"   # computed and logged for comparability; NOT the credit
