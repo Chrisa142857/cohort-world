@@ -1,0 +1,42 @@
+# The CohortThink cell of Table 4: 943 unseen items, the two-turn protocol, one rollout per item.
+# Identical to the resolved config every trained-policy and untrained-agent row of the paper ran
+# with, except that base_url and model are placeholders reproduce/table4.sh fills in.
+model = "SERVED-NAME"
+num_tasks = 943
+num_rollouts = 1
+shuffle = true
+
+[client]
+base_url = "http://HOST:PORT/v1"
+api_key_var = "CW_VLLM_KEY"
+
+[sampling]
+temperature = 0.6
+max_tokens = 6144
+frequency_penalty = 0.3
+
+# Thinking-mode models were run with thinking off, so the reasoning scored is the <cohort-think>
+# block. Remove this table for a model without a thinking switch.
+[sampling.extra_body.chat_template_kwargs]
+enable_thinking = false
+
+[env.taskset]
+id = "cohortworld-internal"
+split = "unseen"
+
+# cohort_think_cal selects the two-turn episode (the <cohort-think> turn, then the environment's
+# request to act) and records the sub-step diagnostics; patients_per_population = 1 scores each
+# item on its own.
+[env.taskset.task]
+reward = "cohort_think_cal"
+patients_per_population = 1
+
+[env.agent.harness]
+id = "null"
+
+[env.agent.runtime]
+type = "subprocess"
+
+[serve.pool]
+type = "static"
+num_workers = 24

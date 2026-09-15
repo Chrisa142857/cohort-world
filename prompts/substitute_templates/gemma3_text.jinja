@@ -1,0 +1,101 @@
+{#-
+  Gemma-3 / MedGemma tool-use chat template.
+
+  WHY THIS FILE EXISTS. The stock google/gemma-3-*-it template (1532 bytes, byte-identical across
+  all six Google checkpoints in our zoo) cannot represent an agentic episode at all:
+
+    1. it has no `tools` variable, so vLLM discards the tool schemas at templating and the model is
+       never told the tools exist -- measured 0.00 tool calls per rollout;
+    2. it raises on any role other than user/assistant, in strict alternation, so a `tool` result
+       turn is a hard error even if the schemas did arrive.
+
+  (2) is the deeper one and is why "just add tools to the prompt" is not enough.
+
+  WHAT THIS CHANGES, stated plainly so it can be disclosed rather than hidden:
+    * tool schemas are rendered as TEXT into the first user turn, which is Google's documented
+      route for Gemma 3 -- its function calling is a PROMPTED capability, not a special token
+      format;
+    * the model is asked for `[func(arg=value)]`, matching vLLM's `pythonic` parser. This is NOT
+      the ```tool_code fence Google's own cookbook shows. It is the format vLLM 0.23.0 can parse,
+      and no `gemma3` parser exists in its 43-name registry;
+    * `tool` results are presented as user turns, since Gemma has no tool role;
+    * the alternation check is dropped, because tool turns violate it by construction.
+
+  A score obtained under this template answers "can a Gemma-3 model be driven through a tool loop
+  in a format it was not trained on", NOT "does Gemma 3 do tool use". Any leaderboard row produced
+  this way must be marked as served under a substituted template and must never be pooled with rows
+  served on their native format.
+-#}
+{{ bos_token }}
+{%- if messages[0]['role'] == 'system' -%}
+    {%- if messages[0]['content'] is string -%}
+        {%- set system_text = messages[0]['content'] -%}
+    {%- else -%}
+        {%- set system_text = messages[0]['content'][0]['text'] -%}
+    {%- endif -%}
+    {%- set loop_messages = messages[1:] -%}
+{%- else -%}
+    {%- set system_text = "" -%}
+    {%- set loop_messages = messages -%}
+{%- endif -%}
+{%- set ns = namespace(prefix=system_text) -%}
+{%- if tools -%}
+    {#- Build the tool list by string concatenation into a namespace, NOT list.append(): vLLM
+        renders chat templates in a SANDBOXED Jinja environment where `.append` raises
+        "access to attribute 'append' of 'list' object is unsafe" -> HTTP 400 on every request.
+        All four Gemma/MedGemma models failed their tool probe on this line, which would have been
+        reported as "the model cannot call tools" had the probe gate not caught it first. -#}
+    {%- set tl = namespace(text='') -%}
+    {%- for t in tools -%}
+        {%- set fn = t['function'] if t.get('function') else t -%}
+        {%- set tl.text = tl.text ~ '- ' ~ fn['name'] ~ '(' ~ (fn.get('parameters', {}).get('properties', {}).keys() | join(', ')) ~ ')  ' ~ (fn.get('description', '') | trim) ~ '\n    schema: ' ~ (fn.get('parameters', {}) | tojson) ~ '\n' -%}
+    {%- endfor -%}
+    {%- set ns.prefix = ns.prefix ~ '\n\nYou have access to these tools. They are the ONLY way to see anything; you cannot answer from memory.\n\n' ~ tl.text ~ '\n\nTo call one, write it ALONE on its own line as a Python-style call inside square brackets, using ONE OF THE NAMES LISTED ABOVE, and then stop. For example, if the list above contains a tool named `X` taking an argument `y`, you would write [X(y="...")]. Never write the words tool_name or argument -- those are placeholders, not tools.\nWrite nothing else on that line. You will be given the result and may then call another. When you are finished, answer normally without brackets.' -%}
+{%- endif -%}
+{%- for message in loop_messages -%}
+    {%- if message['role'] == 'assistant' -%}
+        {{ '<start_of_turn>model\n' }}
+        {%- if message.get('tool_calls') -%}
+            {%- for tc in message['tool_calls'] -%}
+                {%- set fn = tc['function'] if tc.get('function') else tc -%}
+                {#- `arguments` may be a dict or a JSON STRING. There is no `fromjson` filter in
+                    vLLM's sandboxed Jinja env (offline test: "No filter named 'fromjson' found"),
+                    so handle both shapes without one. This renders the assistant's PAST calls back
+                    into context; the model's new output is parsed by --tool-call-parser, not here. -#}
+                {%- set args = fn['arguments'] -%}
+                {{ '[' ~ fn['name'] ~ '(' }}
+                {%- if args is string -%}
+                    {{ args }}
+                {%- else -%}
+                    {%- for k, v in args.items() -%}
+                        {{ k ~ '=' ~ (v | tojson) }}{{ ', ' if not loop.last else '' }}
+                    {%- endfor -%}
+                {%- endif -%}
+                {{ ')]' }}
+            {%- endfor -%}
+        {%- else -%}
+            {{ (message['content'] or '') | trim }}
+        {%- endif -%}
+        {{ '<end_of_turn>\n' }}
+    {%- else -%}
+        {#- user AND tool both become a user turn: Gemma has no tool role -#}
+        {{ '<start_of_turn>user\n' }}
+        {{- (ns.prefix ~ '\n\n') if loop.first and ns.prefix else '' -}}
+        {%- if message['role'] == 'tool' -%}
+            {{ 'Result of the tool call:\n' }}
+        {%- endif -%}
+        {%- if message['content'] is string -%}
+            {{ message['content'] | trim }}
+        {%- elif message['content'] is iterable -%}
+            {%- for item in message['content'] -%}
+                {%- if item['type'] == 'image' -%}{{ '<start_of_image>' }}
+                {%- elif item['type'] == 'text' -%}{{ item['text'] | trim }}
+                {%- endif -%}
+            {%- endfor -%}
+        {%- endif -%}
+        {{ '<end_of_turn>\n' }}
+    {%- endif -%}
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+    {{ '<start_of_turn>model\n' }}
+{%- endif -%}

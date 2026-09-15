@@ -1,0 +1,386 @@
+diff --git a/packages/prime-rl-configs/src/prime_rl/configs/algorithm.py b/packages/prime-rl-configs/src/prime_rl/configs/algorithm.py
+index 739cd6e..f18df47 100644
+--- a/packages/prime-rl-configs/src/prime_rl/configs/algorithm.py
++++ b/packages/prime-rl-configs/src/prime_rl/configs/algorithm.py
+@@ -172,6 +172,25 @@ class BaseAlgoConfig(BaseConfig):
+ 
+     action_loss_type: ClassVar[ActionLossType] = "rl"
+ 
++    echo_alpha: float = 0.0
++    """ECHO's lambda on tool-response bodies, or 0.0 to leave the observation tokens untrained.
++
++    Reuses `EchoAlgorithm._weight_observations` rather than restating it: the selection rule (env-provided
++    nodes AFTER the first model response, narrowed to message bodies by the renderer's per-token
++    `is_content`) is the vetted one, and a second copy of it would drift. The tokens feed the `ce`
++    component and stay outside the rl mask and its denominator, so this does not dilute the population
++    term -- `docs/algorithms.md:191`: "adding echo observation tokens never changes the rl term's
++    effective per-token learning rate".
++
++    Why CohortWorld wants it. A legal move id is `axis.op.code->version:16-hex`, unguessable by
++    construction, and it enters the context ONLY in a tool result: `cw_look`'s listing, or the listing a
++    REFUSED `cw_move` returns. Measured on an earlier run: `cw_move` is accepted 120/155 = 77.4% when such a
++    listing is already in context and 0/122 when it is not, and every accepted move in two runs -- 220 of
++    220 -- copied its id verbatim out of one. The thing the policy has to learn is the SHAPE of what the
++    environment says back, which is exactly what a cross-entropy loss on the environment's own tokens
++    teaches. 0.1 is the vetted default (`EchoAlgoConfig.roles`)."""
++
++
+     sampling: SamplingConfig = SamplingConfig()
+     """Sampling component: which model generates train rollouts."""
+ 
+@@ -204,10 +223,233 @@ class GRPOAlgoConfig(BaseAlgoConfig):
+ 
+     action_loss_type: ClassVar[ActionLossType] = "rl"
+ 
++    echo_alpha: float = 0.0
++    """ECHO's lambda on tool-response bodies, or 0.0 to leave the observation tokens untrained.
++
++    Reuses `EchoAlgorithm._weight_observations` rather than restating it: the selection rule (env-provided
++    nodes AFTER the first model response, narrowed to message bodies by the renderer's per-token
++    `is_content`) is the vetted one, and a second copy of it would drift. The tokens feed the `ce`
++    component and stay outside the rl mask and its denominator, so this does not dilute the population
++    term -- `docs/algorithms.md:191`: "adding echo observation tokens never changes the rl term's
++    effective per-token learning rate".
++
++    Why CohortWorld wants it. A legal move id is `axis.op.code->version:16-hex`, unguessable by
++    construction, and it enters the context ONLY in a tool result: `cw_look`'s listing, or the listing a
++    REFUSED `cw_move` returns. Measured on an earlier run: `cw_move` is accepted 120/155 = 77.4% when such a
++    listing is already in context and 0/122 when it is not, and every accepted move in two runs -- 220 of
++    220 -- copied its id verbatim out of one. The thing the policy has to learn is the SHAPE of what the
++    environment says back, which is exactly what a cross-entropy loss on the environment's own tokens
++    teaches. 0.1 is the vetted default (`EchoAlgoConfig.roles`)."""
++
++
+     length_penalty: LengthPenaltyConfig | None = None
+     """Linear length penalty subtracted from each reward before the GRPO baseline (see ``LinearLengthPenaltyConfig``): a ``pass_rate``-scaled sum of output-token, input-token, and turns terms, each normalized by the group's own max for that quantity. None disables it."""
+ 
+ 
++class CSGRPOAlgoConfig(BaseAlgoConfig):
++    type: Literal["cs_grpo"] = "cs_grpo"
++    """CS-GRPO: sample a matrix of M problems x N rollouts, score POPULATIONS of one rollout per
++    problem with the benchmark's own AUROC and calibration slope, and credit each rollout with the mean
++    score of the populations it joined. GRPO's baseline is unchanged -- the credit is still relative to
++    the rollout's own problem group -- but the reward is a population statistic, which is what the
++    benchmark is judged on and what no single rollout can carry."""
++
++    action_loss_type: ClassVar[ActionLossType] = "rl"
++
++    echo_alpha: float = 0.0
++    """ECHO's lambda on tool-response bodies, or 0.0 to leave the observation tokens untrained.
++
++    Reuses `EchoAlgorithm._weight_observations` rather than restating it: the selection rule (env-provided
++    nodes AFTER the first model response, narrowed to message bodies by the renderer's per-token
++    `is_content`) is the vetted one, and a second copy of it would drift. The tokens feed the `ce`
++    component and stay outside the rl mask and its denominator, so this does not dilute the population
++    term -- `docs/algorithms.md:191`: "adding echo observation tokens never changes the rl term's
++    effective per-token learning rate".
++
++    Why CohortWorld wants it. A legal move id is `axis.op.code->version:16-hex`, unguessable by
++    construction, and it enters the context ONLY in a tool result: `cw_look`'s listing, or the listing a
++    REFUSED `cw_move` returns. Measured on an earlier run: `cw_move` is accepted 120/155 = 77.4% when such a
++    listing is already in context and 0/122 when it is not, and every accepted move in two runs -- 220 of
++    220 -- copied its id verbatim out of one. The thing the policy has to learn is the SHAPE of what the
++    environment says back, which is exactly what a cross-entropy loss on the environment's own tokens
++    teaches. 0.1 is the vetted default (`EchoAlgoConfig.roles`)."""
++
++
++    num_problems: int = 8
++    """M: how many patients a population holds. One is the problem being scored; the other M-1 come from
++    a rolling context of the most recently scored problems, because `score_group` runs on the
++    orchestrator's main loop and waiting there for siblings deadlocks it. This is the sample size of
++    every AUROC the reward is built from -- below ~8 it is dominated by which patients landed together."""
++
++    credit: Literal["contribution", "population"] = "contribution"
++    """What each rollout is paid for. `contribution` -- its OWN term in the population statistic (its
++    pairwise concordance against the opposite-label patients, and its own effect on the calibration
++    slope). `population` -- the whole statistic of the population it joined, which is what the first
++    version paid and which dilutes as the population grows: measured on an early run's first 18 groups, 66.7%
++    of them received no metric gradient at all, because the population AUROC moves in steps of
++    1/(n_pos*n_neg) and one rollout rarely crosses a rank. Kept as an option so the two can be compared
++    rather than argued about."""
++
++    min_population: int = 4
++    """The smallest population a metric may be computed on. Below this an AUROC is decided by which two
++    or three patients happened to land together; those groups train on the format term alone, said once
++    in the log rather than silently."""
++
++    populations_per_rollout: int = 4
++    """How many populations each rollout of the current problem joins. Each uses a different rotation of
++    the context, so a rollout's score averages over several comparison sets instead of one."""
++
++    success_buffer: int = 0
++    """How many past USABLE cells to keep, so a rare success keeps paying after the step it happened in.
++
++    0 disables it. This is the exploitation half of SPEAR's recipe (arXiv 2509.22601, ICLR 2026): an
++    auxiliary tool-use reward to explore -- here the call/move/read ladder -- plus self-imitation, so the
++    trajectories that did the rare thing are reused instead of discarded. Our ladder was already the
++    first half; the second half was missing, and the measurement says that is what costs everything.
++
++    THE MEASUREMENT (an earlier run, 1,488 rollouts over 2 steps, traces read through
++    `vf.Trace.model_validate`): 99.87% declared a rate, 9.07% called a tool, 3.97% moved, 1.68% read a
++    rate elsewhere -- and `read` did not trend up over 5 steps (1.86, 1.56, 1.76, 0.98, 1.56%). A
++    population of M=16 needs `min_population` usable cells, so the necessary condition is
++    `M * p >= min_population`; M*p measured 0.27, and 25 usable cells fell across 96 populations. 12 of
++    12 groups scored 0 cells. The population metric -- the whole point of the algorithm -- contributed
++    no gradient at all.
++
++    WHAT THIS BUYS AND WHAT IT COSTS. A cell read at step t joins the comparison set of populations
++    scored at steps t+1.. until it ages out, so a column with 1-2 real readings can still be measured.
++    The cost is that those members were produced by an older policy version: the statistic is partly
++    off-policy, exactly as SPEAR's replay buffer is, and the depth here is the staleness knob. Credit
++    still goes ONLY to the current step's cells -- buffer members are comparison set, never gradient.
++
++    HONEST LIMIT. SPEAR replays the successful TRAJECTORIES for off-policy updates. That is not
++    reachable from prime-rl's `Algorithm` surface: `score_episode`/`score_group` may annotate only the
++    episodes they are handed, and the train sink compiles those synchronously when `finalize_group`
++    returns, so an algorithm cannot inject a trace from an earlier step. What is reused here is the
++    success's MEASUREMENT, not its tokens. Trace-level replay needs the dispatcher, and is not this."""
++
++    auroc_weight: float = 1.0
++    """Weight on the population AUROC (discrimination): can this ordering of patients be told apart."""
++
++    slope_weight: float = 1.0
++    """Weight on the calibration slope, rewarded as exp(-|log(slope / slope_target)|) so that a slope of
++    3 costs what a slope of 1/3 costs. Zero disables the term."""
++
++    slope_target: float = 1.0
++
++    credit_turn: Literal["first", "all", "action"] = "first"
++    """Which assistant turns carry the advantage. `first` trains only the turn the cold start teaches --
++    the reasoning and the number it commits to -- and gives every later turn zero, so operating the
++    environment produces no gradient of its own. `all` credits the whole episode.
++
++    `first` is the two-stage design: the demonstrations are one turn, and in form A the turns after the
++    first exist because the environment asked for them. Crediting those teaches the policy to answer the
++    ask, which is a crutch; and since it answers by repeating its own reasoning almost verbatim, it would
++    be trained to say the same thing twice.
++
++    `action` is `first` with one exception, and it exists because `first` made the action untrainable.
++    Measured on an earlier run under `first`: nonzero advantages were confined to assistant turn 1 in 800/800
++    trainable branches, INCLUDING all 37 that contained a tool call -- every token after turn 1 is given
++    literal 0.0 and then stripped from the RL loss and its denominator by `_prune_zero_advantages`. The
++    bootstrap ladder was therefore paid to turn-1 PROSE, where it can only upweight wordings that
++    co-occurred with acting and can never upweight a tool-call token. 93.9% of rollouts emitted no tool
++    call at all, and neither the cold start (single-turn demonstrations) nor the reward could teach it.
++
++    Under `action` the three terms go where their claim is about:
++      * FORMAT -> turn 1. The cohort-think block is what has the shape.
++      * LADDER (call / move / read) -> the first turn that CARRIES a tool call; turn 1 when there is
++        none, so a rollout that did not act still receives the ladder's negative centred advantage.
++        Dropping it instead would remove the penalty for not acting and break the group comparison --
++        an advantage that pays acting but does not charge for not acting has no baseline.
++      * METRIC -> the tokens of the committed number, wherever it is written.
++    `first`'s objection stands and is not overridden: a later turn that only RESTATES gets nothing,
++    because it is neither turn 1 nor the turn that acted."""
++
++    call_weight: float = 0.1
++    """Bootstrap rung 1: the rollout emitted any tool call at all. Measured on a pilot run -- 34 of
++    1,338 rollouts called a tool and 1 obtained a reading, so 33 rollouts that took the first step
++    correctly were paid exactly what a rollout that did nothing was paid."""
++
++    move_weight: float = 0.2
++    """Bootstrap rung 2: the rollout reached a different cohort."""
++
++    read_weight: float = 0.3
++    """Bootstrap: pays a rollout for obtaining a reading at another cohort at all. The population term
++    pays only a rollout that moved and read, and the format term is flat once the cold start has taught
++    the shape -- so before any rollout moves, every advantage in the group is zero and the move can never
++    be discovered. Centred within the group like the other terms, so it stops paying as soon as every
++    rollout reads. Set to 0 once movement is established; an early run's step 1 measured num_turns mean 1.002 over
++    512 rollouts, which is why it is not 0 now."""
++
++    metric_weight: float = 1.0
++    """Scale of the population-metric advantage, which lands ONLY on the tokens of the declared number."""
++
++    delta_weight: float = 0.0
++    """Scale of the DELTA-ACCURACY advantage, which lands on the same tokens as `metric_weight`: the
++    declared number's own.
++
++    Default 0.0, so leaving it unset reproduces every earlier run bit-for-bit. It exists because the
++    population metric scores only the ORDERING of `pred = max(reference - declared, 0)` and contains no
++    term for how close `declared` is to the difference it claims. Measured on the 9B CS-GRPO run at step 100: the cold
++    start declared |Adjustment| with median 0.0512, matching the demonstrations' own |true_delta|
++    median of 0.0512, and 100 RL steps compressed it to 0.0002 -- a factor of 256 -- because under this
++    credit assignment a declaration near zero leaves `pred` equal to the reading and preserves whatever
++    ordering the reading already carries, while an honest large declaration clips `pred` to 0 on the
++    65% of external items whose reading is 0 and lands the cell at the bottom of the concordance.
++    Shrinking was the optimum, not an instability.
++
++    The term is deliberately SEPARATE rather than folded into the metric: delta accuracy and the
++    AUROC/slope the metric optimises can disagree, and keeping them apart is what makes the trade
++    observable and ablatable instead of averaged away."""
++
++    delta_baseline: float | None = None
++    """What the delta-accuracy credit is measured against. ``None`` (the default, and what the runs without
++    this term used) subtracts the GROUP MEAN, making the term relative -- and a smoke run measured that
++    this nearly annihilates it, because the policy declares almost the same number in every rollout of a
++    group (median within-group spread 0.0016, the 256x compression): median |delta adv| 0.0019 against the
++    metric's 0.0829, with corr(spread, |delta adv|) = 0.721. A float subtracts that FIXED accuracy instead,
++    making the term absolute, so a group agreeing on a wrong number is still charged. Use 0.5, not 1.0:
++    ``accuracy - 1.0`` is never positive, so every declared-number token would carry a negative advantage
++    and the policy would be pushed to stop emitting the span at all. Cost of a fixed baseline: no variance
++    reduction from the group mean."""
++
++    pred_source: Literal["read_minus_declared", "commit"] = "read_minus_declared"
++    """Where the METRIC term's prediction comes from. ``read_minus_declared`` (the default, and what every
++    run so far used): ``max(reading - declared, 0)``, so the ``cw_commit`` arguments are never read by the credit --
++    which is why the CS-GRPO runs learned ``cw_commit {}`` (evaluation then scores those rollouts on the observed
++    rate, not on anything they stated). ``commit``: the median of the committed ``rates`` (the number
++    evaluation scores as ``stated_commit``, via ``reward.commit_payload`` + ``reward.parse_values``); a
++    rollout with no commit, an empty one or an unparseable one is predicted at the median of
++    ``reward.FLOOR_REPORT`` (0.5) and takes that contribution. The delta term is unchanged: it still reads
++    the turn-1 ``declared`` against ``reading - truth``."""
++
++    delta_scale: float | None = None
++    """Decay constant of the delta advantage: credit = exp(-|error| / delta_scale). DERIVED when unset: the environment's own
++    mean |base_rate - truth| over the training split, i.e. `cal_l2_scale() / T3_CAL_L2_SCALE_MULT`
++    (0.035877 for the frozen item set). A declaration is worth full credit when its error is far below
++    what the base rate itself achieves, and nothing when it is as bad. Not a literal here: restating it
++    would let this scale drift from the one the reward's own q2/r2 are normalised by."""
++
++    format_weight: float = 0.2
++    """Scale of the format advantage, which lands on every sampled token. The format rule is imported
++    from the demonstration generator's own module, so the cold start and the RL objective cannot drift."""
++
++    rate_source: str = "internal"
++    """Which base-rate table binarises the truth. Passed to the environment's own `reward.base_rate`;
++    the threshold and the readable reference are CALLED from the environment (`base_rate`, `entry_rate`)
++    rather than read off the item, because they are not fields on it -- naming fields instead would
++    find none, score no population, and train on the format term alone while looking healthy."""
++
++    tokenizer_name: str | None = None
++    """Where to load the tokenizer that finds the declared number's tokens. Defaults to the policy's own
++    model name, which is the same vocabulary by construction; set it only when that path is not loadable
++    from the orchestrator process."""
++
++    benchmark_repo: str | None = None
++    """Path to the benchmark repository whose `gen/binary_metrics.py` and `gen/demo_quality.py` DEFINE
++    the AUROC, the slope and the format rule. Imported, never restated: a second copy here would drift
++    from the judge the results are quoted against. Falls back to $CW_REPO."""
++
++
+ class EchoAlgoConfig(GRPOAlgoConfig):
+     type: Literal["echo"] = "echo"  # type: ignore[assignment]
+     """ECHO: group-relative advantage on action tokens (GRPO), plus weighted
+@@ -238,6 +480,25 @@ class MaxRLAlgoConfig(BaseAlgoConfig):
+ 
+     action_loss_type: ClassVar[ActionLossType] = "rl"
+ 
++    echo_alpha: float = 0.0
++    """ECHO's lambda on tool-response bodies, or 0.0 to leave the observation tokens untrained.
++
++    Reuses `EchoAlgorithm._weight_observations` rather than restating it: the selection rule (env-provided
++    nodes AFTER the first model response, narrowed to message bodies by the renderer's per-token
++    `is_content`) is the vetted one, and a second copy of it would drift. The tokens feed the `ce`
++    component and stay outside the rl mask and its denominator, so this does not dilute the population
++    term -- `docs/algorithms.md:191`: "adding echo observation tokens never changes the rl term's
++    effective per-token learning rate".
++
++    Why CohortWorld wants it. A legal move id is `axis.op.code->version:16-hex`, unguessable by
++    construction, and it enters the context ONLY in a tool result: `cw_look`'s listing, or the listing a
++    REFUSED `cw_move` returns. Measured on an earlier run: `cw_move` is accepted 120/155 = 77.4% when such a
++    listing is already in context and 0/122 when it is not, and every accepted move in two runs -- 220 of
++    220 -- copied its id verbatim out of one. The thing the policy has to learn is the SHAPE of what the
++    environment says back, which is exactly what a cross-entropy loss on the environment's own tokens
++    teaches. 0.1 is the vetted default (`EchoAlgoConfig.roles`)."""
++
++
+ 
+ class RAEAlgoConfig(BaseAlgoConfig):
+     type: Literal["rae"] = "rae"
+@@ -253,6 +514,25 @@ class RAEAlgoConfig(BaseAlgoConfig):
+ 
+     action_loss_type: ClassVar[ActionLossType] = "rl"
+ 
++    echo_alpha: float = 0.0
++    """ECHO's lambda on tool-response bodies, or 0.0 to leave the observation tokens untrained.
++
++    Reuses `EchoAlgorithm._weight_observations` rather than restating it: the selection rule (env-provided
++    nodes AFTER the first model response, narrowed to message bodies by the renderer's per-token
++    `is_content`) is the vetted one, and a second copy of it would drift. The tokens feed the `ce`
++    component and stay outside the rl mask and its denominator, so this does not dilute the population
++    term -- `docs/algorithms.md:191`: "adding echo observation tokens never changes the rl term's
++    effective per-token learning rate".
++
++    Why CohortWorld wants it. A legal move id is `axis.op.code->version:16-hex`, unguessable by
++    construction, and it enters the context ONLY in a tool result: `cw_look`'s listing, or the listing a
++    REFUSED `cw_move` returns. Measured on an earlier run: `cw_move` is accepted 120/155 = 77.4% when such a
++    listing is already in context and 0/122 when it is not, and every accepted move in two runs -- 220 of
++    220 -- copied its id verbatim out of one. The thing the policy has to learn is the SHAPE of what the
++    environment says back, which is exactly what a cross-entropy loss on the environment's own tokens
++    teaches. 0.1 is the vetted default (`EchoAlgoConfig.roles`)."""
++
++
+     decay: float = Field(0.95, ge=0.0, lt=1.0)
+     """EMA decay of the per-agent baselines (SPIRAL's α): after a trace is
+     scored, its agent's baseline moves as ``baseline ← decay · baseline +
+@@ -271,6 +551,25 @@ class HierarchicalGRPOAlgoConfig(BaseAlgoConfig):
+ 
+     action_loss_type: ClassVar[ActionLossType] = "rl"
+ 
++    echo_alpha: float = 0.0
++    """ECHO's lambda on tool-response bodies, or 0.0 to leave the observation tokens untrained.
++
++    Reuses `EchoAlgorithm._weight_observations` rather than restating it: the selection rule (env-provided
++    nodes AFTER the first model response, narrowed to message bodies by the renderer's per-token
++    `is_content`) is the vetted one, and a second copy of it would drift. The tokens feed the `ce`
++    component and stay outside the rl mask and its denominator, so this does not dilute the population
++    term -- `docs/algorithms.md:191`: "adding echo observation tokens never changes the rl term's
++    effective per-token learning rate".
++
++    Why CohortWorld wants it. A legal move id is `axis.op.code->version:16-hex`, unguessable by
++    construction, and it enters the context ONLY in a tool result: `cw_look`'s listing, or the listing a
++    REFUSED `cw_move` returns. Measured on an earlier run: `cw_move` is accepted 120/155 = 77.4% when such a
++    listing is already in context and 0/122 when it is not, and every accepted move in two runs -- 220 of
++    220 -- copied its id verbatim out of one. The thing the policy has to learn is the SHAPE of what the
++    environment says back, which is exactly what a cross-entropy loss on the environment's own tokens
++    teaches. 0.1 is the vetted default (`EchoAlgoConfig.roles`)."""
++
++
+     episode_agents: list[str] = Field(min_length=1)
+     """Roles compared within one proposed problem. Use ``["solver"]`` for
+     ``proposer-solver``."""
+@@ -372,6 +671,7 @@ AlgoConfig: TypeAlias = Annotated[
+     | HierarchicalGRPOAlgoConfig
+     | OPDAlgoConfig
+     | OPSDAlgoConfig
++    | CSGRPOAlgoConfig
+     | SFTAlgoConfig,
+     Field(discriminator="type"),
+ ]
+@@ -387,6 +687,7 @@ its class defaults are the vetted setting.
+ - ``opsd`` — SDFT: policy samples, demo-conditioned reverse KL against the live policy (the teacher is the policy itself).
+ - ``sft`` — a frozen model samples, the policy trains with CE on its tokens. Needs a frozen ``sampling.source``.
+ - ``echo`` — GRPO on action tokens + weighted CE on tool-response observation tokens.
++- ``cs_grpo`` — cross-sample GRPO: a matrix of M problems x N rollouts, scored by population AUROC and calibration slope, credited to the tokens of the declared number.
+ 
+ A new credit-assignment scheme is a new named algorithm in code (subclass
+ ``Algorithm``, register it), not a config that points at an import path.
+diff --git a/src/prime_rl/orchestrator/algo/__init__.py b/src/prime_rl/orchestrator/algo/__init__.py
+index 104fd68..cc238b3 100644
+--- a/src/prime_rl/orchestrator/algo/__init__.py
++++ b/src/prime_rl/orchestrator/algo/__init__.py
+@@ -23,6 +23,7 @@ from __future__ import annotations
+ from typing import TYPE_CHECKING
+ 
+ from prime_rl.orchestrator.algo.base import Algorithm, connect_frozen_client
++from prime_rl.orchestrator.algo.cs_grpo import CSGRPOAlgorithm
+ from prime_rl.orchestrator.algo.echo import EchoAlgorithm
+ from prime_rl.orchestrator.algo.grpo import GRPOAlgorithm
+ from prime_rl.orchestrator.algo.hierarchical_grpo import HierarchicalGRPOAlgorithm
+@@ -48,6 +49,7 @@ ALGORITHM_CLASSES: dict[str, type[Algorithm]] = {
+     "opd": OPDAlgorithm,
+     "opsd": OPSDAlgorithm,
+     "sft": SFTDistillAlgorithm,
++    "cs_grpo": CSGRPOAlgorithm,
+ }
+ 
+ 
+@@ -65,6 +67,7 @@ def build_algorithm(config: AlgoConfig, clients: InferenceClient) -> Algorithm:
+ __all__ = [
+     "Algorithm",
+     "EchoAlgorithm",
++    "CSGRPOAlgorithm",
+     "GRPOAlgorithm",
+     "HierarchicalGRPOAlgorithm",
+     "MaxRLAlgorithm",

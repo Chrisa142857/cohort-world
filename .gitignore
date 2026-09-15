@@ -1,0 +1,60 @@
+# WHITELIST: track nothing unless it is allowed below.
+#
+# The source tree this release is cut from mixes code with UK Biobank-derived data, including exact
+# private counts and individual-level (k = 1) item files. With a blacklist, one missed rule puts a
+# private file into git history, where it cannot be taken back once pushed. Here a new file has to be
+# allowed in explicitly, and tools/check_release.py runs over everything that is allowed before any
+# commit or push.
+*
+!.gitignore
+!*/
+
+# ---- top level ----
+!README.md
+!LICENSE
+!CITATION.cff
+!requirements-freeze.txt
+
+# ---- environment packages (deliverable 3) ----
+!cohortworld_env/**
+!cohortworld_internal/**
+!cohortworld_locate/**
+!cohortworld_delta/**
+!cohortworld_phenocal/**
+
+# ---- prompts and eval configs ----
+!prompts/**
+!configs/**
+
+# ---- scoring and reproduction (deliverables 4 and 6) ----
+!gen/**
+!reproduce/**
+
+# ---- cohort-collection build scripts, for provenance (deliverable 1; need UKB access to run) ----
+!build/**
+
+# ---- training (deliverable 5) ----
+!train/**
+
+# ---- tests, release tooling, data manifests (no data) ----
+!tests/**
+!tools/**
+!data/README.md
+!data/MANIFEST.tsv
+
+# ---- never, even inside an allowed directory (last matching rule wins) ----
+__pycache__/
+*.pyc
+*.egg-info/
+**/priv/
+**/*private*
+**/*_subject*
+*.jsonl
+*.jsonl.idx
+*.npz
+*.parquet
+*.safetensors
+*.pt
+*.log
+outputs/
+experiments/

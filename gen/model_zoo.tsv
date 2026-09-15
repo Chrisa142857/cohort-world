@@ -1,0 +1,19 @@
+# The model zoo, in ONE place. serve_on.sh and gen/reasoning_kwargs.py both read this file.
+# Two copies of the alias->repo map already existed (serve_model.sh, serve_on.sh) and the second
+# was a copy-paste of the first; a third would have been the one that drifted.
+# columns: name <TAB> hub-repo-dir <TAB> tool-call-parser <TAB> extra vllm flags ("-" = none)
+qwen3.5-27b	models--Qwen--Qwen3.5-27B	qwen3_xml	--gdn-prefill-backend triton
+qwen3.5-9b	models--Qwen--Qwen3.5-9B	qwen3_xml	--gdn-prefill-backend triton
+qwen3.5-4b	models--Qwen--Qwen3.5-4B	qwen3_xml	--gdn-prefill-backend triton
+qwen3.5-2b	models--Qwen--Qwen3.5-2B	qwen3_xml	--gdn-prefill-backend triton
+qwen32b	models--Qwen--Qwen3-32B	hermes	-
+qwen14b	models--Qwen--Qwen2.5-14B-Instruct	hermes	-
+qwen7b	models--Qwen--Qwen2.5-7B-Instruct	hermes	-
+qwen3b	models--Qwen--Qwen2.5-3B-Instruct	hermes	-
+gemma3-27b	models--google--gemma-3-27b-it	pythonic	-
+gemma3-4b	models--google--gemma-3-4b-it	pythonic	-
+medgemma27b	models--google--medgemma-27b-it	pythonic	-
+medgemma4b	models--google--medgemma-4b-it	pythonic	-
+llama8b	models--meta-llama--Llama-3.1-8B-Instruct	llama3_json	-
+mistral24b	models--mistralai--Mistral-Small-24B-Instruct-2501	mistral	-
+mistral24b-native	models--mistralai--Mistral-Small-24B-Instruct-2501	mistral	--tokenizer-mode mistral --config-format mistral --load-format mistral

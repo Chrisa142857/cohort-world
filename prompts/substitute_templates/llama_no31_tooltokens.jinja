@@ -1,0 +1,80 @@
+{#- SUBSTITUTE TEMPLATE for a Llama-3.0-era checkpoint that ships no chat template and whose
+    tokenizer lacks the Llama-3.1 tool tokens (<|python_tag|>, <|eom_id|>).
+
+    WHY IT EXISTS. aaditya/Llama3-OpenBioLLM-8B is a Llama-3.0 fine-tune: max_position_embeddings
+    8192, no chat_template in tokenizer_config.json, and 256 added tokens of which NONE is
+    <|python_tag|>. It was being served with --tool-call-parser llama3_json and with llama.jinja
+    (Llama-3.1-8B-Instruct's own template, which emits <|python_tag|>). vLLM answered every request
+    with HTTP 500: "Llama3JsonToolParser could not locate the bot token '<|python_tag|>' in the
+    tokenizer." vLLM's own documentation says llama3_json targets Llama 3.1/3.2/4 and that "no
+    parser exists for Llama 3.0-era models without 3.1+ tool tokens".
+
+    So the format has to be taught in the prompt and parsed from plain text. This template renders
+    the Llama-3 header format the checkpoint WAS trained on, and asks for Hermes-style tool calls --
+    <tool_call>{"name": ..., "arguments": {...}}</tool_call> -- which the `hermes` parser reads out
+    of ordinary text with no special-token prerequisite at all.
+
+    DISCLOSURE. A row produced this way answers "can this model be driven through a tool loop in a
+    format it was never trained on", not "does this model do tool use". gen/newrun.sh records this
+    path in every run's config.yaml so such rows are identifiable and must not be pooled with rows
+    served on a native tool format.
+
+    Two traps this template is written to avoid, both paid for already:
+      * the sandboxed Jinja vLLM renders in forbids list.append() and has no `fromjson` filter;
+      * a placeholder like [tool_name(argument="value")] gets COPIED LITERALLY (MedGemma 1.5 emitted
+        a tool actually named `tool`), so the instructions below name the REAL tools by iterating
+        over `tools` and never show a fake one.
+-#}
+{{- bos_token }}
+{%- set ns = namespace(system="") %}
+{%- for m in messages %}
+    {%- if m['role'] == 'system' %}
+        {%- set ns.system = m['content'] %}
+    {%- endif %}
+{%- endfor %}
+<|start_header_id|>system<|end_header_id|>
+
+{{ ns.system }}
+{%- if tools %}
+
+## Available tools
+{% for t in tools %}
+- {{ (t.function.name if t.function is defined else t.name) }}: {{ (t.function.description if t.function is defined else t.description) }}
+  arguments schema: {{ (t.function.parameters if t.function is defined else t.parameters) | tojson }}
+{% endfor %}
+{#- ORDER MATTERS, and it cost a probe. The first version of this block put the format instruction
+    BEFORE the tool list, so the last thing the model saw was a list -- and openbio_8b simply
+    continued it, emitting "- cw_move: Take a move by its id. ... arguments schema: {...}" as its
+    reply and scoring 0/5 on the tool probe. The imperative goes LAST. -#}
+## How to answer
+Reply with exactly one line, and nothing else:
+
+<tool_call>{"name": "NAME", "arguments": {ARGUMENTS}}</tool_call>
+
+{%- set ns2 = namespace(n='') %}{%- for t in tools %}{%- set ns2.n = ns2.n + (', ' if ns2.n else '') + (t.function.name if t.function is defined else t.name) %}{%- endfor %}
+where NAME is one of {{ ns2.n }} and ARGUMENTS is a
+JSON object matching that tool's schema above. Do not repeat the tool list. Do not explain. Emit the
+single <tool_call> line.
+{%- endif %}<|eot_id|>
+{%- for m in messages %}
+    {%- if m['role'] == 'system' %}
+    {%- elif m['role'] == 'tool' %}
+{#- Llama 3.0 has no `ipython` role, so a tool RESULT is delivered as a user turn. #}
+<|start_header_id|>user<|end_header_id|>
+
+<tool_response>{{ m['content'] }}</tool_response><|eot_id|>
+    {%- else %}
+<|start_header_id|>{{ m['role'] }}<|end_header_id|>
+
+{{ m['content'] if m['content'] is not none else "" }}
+        {%- if m['tool_calls'] %}
+            {%- for c in m['tool_calls'] %}
+<tool_call>{"name": "{{ c.function.name }}", "arguments": {{ c.function.arguments }}}</tool_call>
+            {%- endfor %}
+        {%- endif %}<|eot_id|>
+    {%- endif %}
+{%- endfor %}
+{%- if add_generation_prompt %}
+<|start_header_id|>assistant<|end_header_id|>
+
+{% endif %}
