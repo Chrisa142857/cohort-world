@@ -51,8 +51,9 @@ hf download Chrisa142857/cohort-world --repo-type dataset --local-dir data
 export CW_PANEL=$PWD/data/official CW_OFFICIAL=$PWD/data/official CW_SIDECAR=$PWD/data/official
 export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 
-# serve a model (any OpenAI-compatible endpoint works; we use vLLM)
-vllm serve Qwen/Qwen3.5-9B --served-model-name qwen3.5-9b --port 8000 --enable-auto-tool-choice --tool-call-parser qwen3_xml
+# serve a model (any OpenAI-compatible endpoint works; we use vLLM). gen/model_zoo.tsv holds each
+# model's revision, parser and flags; this prints the exact command for one of them
+$(python gen/reasoning_kwargs.py --serve qwen3.5-9b) --port 8000
 
 # evaluate on the CohortThink unseen split
 reproduce/table4.sh http://localhost:8000/v1 qwen3.5-9b Qwen3.5-9B agent
@@ -105,4 +106,4 @@ This work uses UK Biobank under an approved application. A number produced here 
 
 ## License
 
-Code: RELEASE-TODO. Cohorts and benchmark: released under the terms permitted by the UK Biobank data use agreement; the licence is stated on the Hugging Face dataset card.
+Code: Apache-2.0 (`LICENSE`). Data: CC BY-NC 4.0, under the UK Biobank data use terms, see the dataset card.
