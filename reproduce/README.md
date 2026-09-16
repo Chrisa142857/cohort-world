@@ -15,9 +15,10 @@ export CW_VLLM_KEY=dummy                     # the client requires the variable 
 
 ## Table 3, CohortCal
 
-One row per model. `single` is the leaderboard protocol every row uses: the estimator system prompt
+One row per model, scored on the CohortCal test split (the paper's unseen split). `single` is the leaderboard protocol every row uses: the estimator system prompt
 (`prompts/sys_estimator.txt`), one user turn, temperature 0, a 48-token cap, thinking switched off
-(`chat_template_kwargs.enable_thinking = false`, which `table3.sh single` always sends), and a bare
+(`chat_template_kwargs.enable_thinking = false`, which `table3.sh single` always sends; the two vendor rows ran at
+Claude Sonnet 5's low effort and Gemini 3.5 Flash-Lite's minimal thinking), and a bare
 percentage parsed from the reply. How each open model was served (Hugging Face repo and revision,
 tool-call parser, vLLM flags, chat_template_kwargs) is in `gen/model_zoo.tsv`;
 `gen/reasoning_kwargs.py --serve <name>` prints the `vllm serve` line. The reasoning kwargs matter
@@ -44,7 +45,7 @@ reproduce/table4.sh http://host:8000/v1 qwen3.5-9b Qwen3.5-9B agent
 reproduce/table4.sh http://host:8000/v1 qwen3.5-9b Qwen3.5-9B single
 ```
 
-CM is the share of items whose answer equals the published rate of the item's reference group, the
+CM is the share of items whose answer equals the published rate of the item's reference cohort, the
 cohort one step up the coding tree that publishes a rate. CC is the three-way sign agreement between
 the difference the answer adds on top of that rate and the recorded one, over the items where the
 recorded difference is not zero. CT AUROC uses a different `b` from Table 3, the UK Biobank marginal
