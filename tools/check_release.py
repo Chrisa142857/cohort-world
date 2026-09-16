@@ -92,6 +92,10 @@ def check_content(root, paths, max_mb):
                     yield f"{p}:{i}: {rule}: {line.strip()[:120]}"
 
 
+# In data files the host rule matches only a host-like use (a URL, an ssh target, host:port). A model's
+# own text is released verbatim, and "frontier" as an English word is not a machine name.
+DATA_CONTENT_RULES = [(r, rx) for r, rx in CONTENT_RULES if r != "host-name"] + [
+    ("host-name", re.compile(r"(?:https?://|ssh |@|//)(?:hummer|yukon|frontier)\b|\b(?:hummer|yukon|frontier):[0-9]"))]
 # Exact counts that must never leave the private store in any data file: a cohort's member count, and
 # the event / at-risk / person counts behind a rate. Released files carry bands and rates instead.
 # (CohortCal's own `n` / `n_events` pass: its items meet UK Biobank's minimum of 5 by construction.)
@@ -108,6 +112,16 @@ def check_data(paths, min_k):
     yield from check_names(files)
     yield from check_content("", [f for f in files if f.endswith((".md", ".txt", ".cff", ".tsv"))], 5)
     for f in files:
+        if f.endswith((".json", ".jsonl")):
+            # model outputs and traces carry metadata as well as answers: a lab path, a host name or a
+            # run id in a config block would ship with them, so the content rules apply here too.
+            with open(f) as fh:
+                for i, line in enumerate(fh, 1):
+                    for rule, rx in DATA_CONTENT_RULES:
+                        m = rx.search(line)
+                        if m:
+                            yield f"{f}:{i}: {rule}: ...{line[max(0, m.start() - 40):m.start() + 60].strip()}..."
+                            break
         if f.endswith(".json"):
             m = EXACT_COUNT_KEY.search(open(f).read())
             if m:
@@ -197,6 +211,20 @@ def selftest():
         open(card, "w").write("license: RELEASE-TODO\n")
         if not any("unfilled" in r for r in check_data([card], 10)):
             fails.append("unfilled marker in a dataset card did not fire")
+        traces = os.path.join(d, "t3_rate_traces.jsonl")
+        open(traces, "w").write(
+            json.dumps({"labels": {"k": 10}, "run": {"name": "run23"}, "text": "0.8%"}) + "\n"
+            + json.dumps({"labels": {"k": 10}, "client": {"base_url": "http://hummer:8000/v1"}}) + "\n"
+            + json.dumps({"labels": {"k": 10}, "id": "/work/USERS/someone/x"}) + "\n")
+        got = {r.split(": ")[1] for r in check_data([traces], 10)}
+        for rule in ("host-name", "abs-path"):
+            if rule not in got:
+                fails.append(f"data-mode content rule {rule} did not fire inside a record")
+        clean = os.path.join(d, "t3_rate_clean.jsonl")
+        open(clean, "w").write(json.dumps({"labels": {"k": 10}, "text": "the rate is 0.8%"}) + "\n"
+                               + json.dumps({"labels": {"k": 10}, "text": "boundary edge frontier horizon"}) + "\n")
+        if list(check_data([clean], 10)):
+            fails.append("data-mode content rules fired on a clean record")
     print("SELFTEST " + ("FAIL\n  " + "\n  ".join(fails) if fails else "PASS: every rule fires on a bad input and not on a good one"))
     return 1 if fails else 0
 
