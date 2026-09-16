@@ -12,7 +12,7 @@ path. Nothing is restated:
   * the per-(disease,horizon) floor is built exactly as score_claude_arm.py builds it;
   * slope = np.polyfit(truth, pred, 1)[0], the board's orientation; ACC/F1/AUROC via binary_metrics.evaluate.
 """
-import argparse, json, os, statistics as st, sys
+import argparse, re, json, os, statistics as st, sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -137,7 +137,9 @@ def main():
            "bss": round(1 - float(np.sum((a_ - b_) ** 2)) / max(float(np.sum((fl_ - b_) ** 2)), 1e-12), 4),
            "binary": evaluate([(float(x), float(t), float(f)) for x, t, f in zip(a_, b_, fl_)])}
     os.makedirs(a.out, exist_ok=True)
-    path = os.path.join(a.out, f"phenocal_{res['version']}_cohortworld_{a.model}_bss{res['bss']}_auroc{res['binary']['auroc']:.4f}_n{n_ok}.json")
+    # the label is a table row, so it may carry spaces or a slash; the file name is derived from it
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", a.model).strip("-")
+    path = os.path.join(a.out, f"phenocal_{res['version']}_cohortworld_{slug}_bss{res['bss']}_auroc{res['binary']['auroc']:.4f}_n{n_ok}.json")
     _finite(res)
     json.dump(res, open(path, "w"), indent=1, allow_nan=False)
     print(path)

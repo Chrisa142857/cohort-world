@@ -68,9 +68,12 @@ def score(rows):
 def from_run(d):
     global a
     F = glob.glob(os.path.join(a.experiments, d, "outputs", "*", "traces.jsonl"))
-    if not F: return None
+    return from_traces(F[0]) if F else None
+
+def from_traces(path):
+    """One two-turn trace file, by path: a run directory's outputs/*/traces.jsonl or a released copy."""
     rows = []
-    for L in open(F[0]):
+    for L in open(path):
         rec = json.loads(L); it = (rec.get("task") or {}).get("data") or {}
         for t in (rec.get("traces") or [rec]):
             nodes = t.get("nodes") or []
@@ -100,6 +103,7 @@ def from_singleturn(f):
 ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 ap.add_argument("--run", nargs="*", default=[], help="run directories holding outputs/*/traces.jsonl (two-turn agent rows)")
 ap.add_argument("--singleturn", nargs="*", default=[], help="jsonl files written by singleturn_t3.py (no-tool rows)")
+ap.add_argument("--traces", nargs="*", default=[], help="two-turn trace files by path (the released paper_outputs copies)")
 ap.add_argument("--items", default=os.path.join(os.environ.get("CW_ITEMS", ""), "t3_rate_unseen.jsonl"),
                 help="the CohortThink item file the single-turn rows answered; default $CW_ITEMS/t3_rate_unseen.jsonl")
 ap.add_argument("--experiments", default=os.environ.get("CW_EXPERIMENTS", "experiments"),
@@ -112,6 +116,10 @@ for d in a.run:
     if not rows: print(f"{d[:48]:50} no traces"); continue
     mn, mex, mbn, mbo, cn, co = score(rows)
     print(f"{d[:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
+for f in a.traces:
+    rows = from_traces(f)
+    mn, mex, mbn, mbo, cn, co = score(rows)
+    print(f"{f.split('/')[-1][:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
 for f in a.singleturn:
     rows = from_singleturn(f)
     mn, mex, mbn, mbo, cn, co = score(rows)

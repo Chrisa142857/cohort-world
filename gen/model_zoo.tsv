@@ -6,6 +6,7 @@
 qwen3.5-2b	Qwen/Qwen3.5-2B	15852e8c16360a2fea060d615a32b45270f8a8fc	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
 qwen3.5-4b	Qwen/Qwen3.5-4B	851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
 qwen3.5-9b	Qwen/Qwen3.5-9B	c202236235762e1c871ad0ccb60c8ee5ba337b9a	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
+qwen3.5-27b	Qwen/Qwen3.5-27B	fc05daec18b0a78c049392ed2e771dde82bdf654	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
 qwen3.6-27b	Qwen/Qwen3.6-27B	6a9e13bd6fc8f0983b9b99948120bc37f49c13e9	qwen3_xml	--gdn-prefill-backend triton	{"enable_thinking": false}
 gemma3-4b	google/gemma-3-4b-it	093f9f388b31de276ce2de164bdc2081324b9767	pythonic_lenient	--tool-parser-plugin gen/cw_tool_parsers.py --chat-template prompts/substitute_templates/gemma3.jinja	{}
 gemma3-27b	google/gemma-3-27b-it	005ad3404e59d6023443cb575daa05336842228a	pythonic_lenient	--tool-parser-plugin gen/cw_tool_parsers.py --chat-template prompts/substitute_templates/gemma3.jinja	{}

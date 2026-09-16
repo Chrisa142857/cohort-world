@@ -14,7 +14,7 @@ Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Mo
 | **CohortCal** | a calibration benchmark: written histories with a disease and horizon, answered with a percentage, scored against the recorded incidence | 70,378 items over 3,198 cohorts disjoint from CohortWorld, of which the 31,784 test items over 1,274 held-out cohorts are scored |
 | **CohortThink** | the diagnostic simulation inside the environment, with CohortMatch and CohortContrast read off its episodes | 16,770 / 880 / 943 items (train / seen / unseen) |
 | **CS-GRPO** | the training algorithm, a population reward for a population metric, as a plug-in to [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) | `train/` |
-| **Checkpoints** | Qwen3.5-9B and Qwen3.6-27B after the cold start and after CS-GRPO | to follow |
+| **Checkpoints** | Qwen3.5-9B and Qwen3.6-27B after the cold start, after CS-GRPO, and after CS-GRPO with $\psi$ | six model repositories, `cohortworld-qwen3.5-9b-*` and `cohortworld-qwen3.6-27b-*` |
 
 All released cohorts hold at least $k = 10$ participants, sizes are published as bands, and no individual-level record leaves UK Biobank. A pseudo-subject is a history and an index time drawn from a cohort, not a person's record.
 
@@ -87,7 +87,9 @@ tools/                  the release gate
 data/                   MANIFEST of the dataset on HuggingFace
 ```
 
-Data: https://huggingface.co/datasets/Chrisa142857/cohort-world (cohorts, CohortCal, task items, SFT demonstrations).
+Data: https://huggingface.co/datasets/Chrisa142857/cohort-world (cohorts, CohortCal, task items, SFT
+demonstrations, and the model outputs behind both tables). Checkpoints: the six `Chrisa142857/cohortworld-*`
+model repositories. `reproduce/rescore.sh` re-scores the paper's own outputs without running a model.
 
 ## Ethics and scope
 

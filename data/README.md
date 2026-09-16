@@ -10,6 +10,10 @@ export CW_PANEL=$PWD/data/official CW_OFFICIAL=$PWD/data/official CW_SIDECAR=$PW
 export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 ```
 
+`paper_outputs/` holds the model outputs behind Tables 3 and 4, one file per published row, with an
+`index.json` per table; `reproduce/rescore.sh data/paper_outputs` prints both tables from them. The
+trained checkpoints are separate model repositories, linked from the dataset card.
+
 `MANIFEST.tsv` lists every released file with its size in bytes and its SHA-256. Check a download
 against it with:
 

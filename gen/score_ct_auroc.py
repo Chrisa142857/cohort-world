@@ -45,8 +45,13 @@ class Tr: pass
 
 
 def from_run(d, experiments):
+    return from_traces(glob.glob(os.path.join(experiments, d, "outputs", "*", "traces.jsonl"))[0])
+
+
+def from_traces(path):
+    """One two-turn trace file, by path: a run directory's outputs/*/traces.jsonl or a released copy."""
     rows = []
-    for L in open(glob.glob(os.path.join(experiments, d, "outputs", "*", "traces.jsonl"))[0]):
+    for L in open(path):
         rec = json.loads(L); it = rec["task"]["data"]
         for t in rec["traces"]:
             tr = Tr(); tr.messages = [x["message"] for x in (t.get("nodes") or []) if x.get("message")]
@@ -68,6 +73,7 @@ def from_singleturn(f):
 
 ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 ap.add_argument("--run", nargs="*", default=[]); ap.add_argument("--singleturn", nargs="*", default=[])
+ap.add_argument("--traces", nargs="*", default=[], help="two-turn trace files by path (the released paper_outputs copies)")
 ap.add_argument("--experiments", default=os.environ.get("CW_EXPERIMENTS", "experiments"))
 ap.add_argument("--boot", type=int, default=2000); ap.add_argument("--seed", type=int, default=42)
 a = ap.parse_args()
@@ -75,6 +81,9 @@ print(f"{'row':50}{'n':>6}{'CT AUROC':>10}{'95% CI':>18}")
 for d in a.run:
     n, au, lo, hi = score(from_run(d, a.experiments), a.boot, a.seed)
     print(f"{d[:48]:50}{n:>6}{au:>10.3f}   [{lo:.3f}, {hi:.3f}]")
+for f in a.traces:
+    n, au, lo, hi = score(from_traces(f), a.boot, a.seed)
+    print(f"{os.path.basename(f)[:48]:50}{n:>6}{au:>10.3f}   [{lo:.3f}, {hi:.3f}]")
 for f in a.singleturn:
     n, au, lo, hi = score(from_singleturn(f), a.boot, a.seed)
     print(f"{os.path.basename(f)[:48]:50}{n:>6}{au:>10.3f}   [{lo:.3f}, {hi:.3f}]")

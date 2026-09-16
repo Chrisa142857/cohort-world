@@ -68,7 +68,7 @@ def serve_command(name, path=ZOO):
 
 def _selfcheck():
     z = zoo()
-    assert len(z) == 10, sorted(z)
+    assert len(z) == 11, sorted(z)
     assert qwen3_rows_with_thinking_on(z) == [], qwen3_rows_with_thinking_on(z)
     assert reasoning_kwargs("qwen3.5-9b") == {"enable_thinking": False}
     assert reasoning_kwargs("gemma3-27b") == {}

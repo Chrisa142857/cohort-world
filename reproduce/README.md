@@ -61,6 +61,14 @@ CM, CC and calls per item use no `b` and reproduce exactly. Do not substitute
 `reward.base_rate("internal")`: it is the train-split mean of the CohortThink items, the environment's
 reward reference, not the UK Biobank marginal this column is defined with.
 
+## Re-scoring the paper's own outputs
+
+The dataset's `paper_outputs/` holds the model outputs behind every row of both tables, single-turn
+records for Table 3 and episode traces for Table 4, named by row. `reproduce/rescore.sh
+data/paper_outputs` scores them with the same scorers and prints both tables without running a
+model. CM, CC, calls per item and every Table 3 number reproduce exactly; CT AUROC lands within
+about 0.03 for the reason above.
+
 ## What a run leaves behind
 
 Each call writes `outputs/<table>_<label>/` with the resolved eval config, the traces, and the scored
