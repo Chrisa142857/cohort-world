@@ -60,6 +60,9 @@ reproduce/table4.sh http://localhost:8000/v1 qwen3.5-9b Qwen3.5-9B agent
 
 # Table 3
 reproduce/table3.sh http://localhost:8000/v1 qwen3.5-9b Qwen3.5-9B single
+
+# both tables from the paper's own model outputs, no model needed
+reproduce/rescore.sh data/paper_outputs
 ```
 
 Every path, split, threshold and seed is an argument; nothing is a literal in a script body. Each call writes `outputs/<table>_<label>/` with the resolved evaluation config, the traces and the scored numbers, so a number can be traced to the config and traces that produced it (`reproduce/README.md`).

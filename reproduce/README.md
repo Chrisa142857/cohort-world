@@ -29,8 +29,9 @@ reproduce/table3.sh http://host:8000/v1 qwen3.5-9b Qwen3.5-9B single
 
 prints AUROC on `r > b`, the share of answers that beat `b`, and the calibration slope, each with a
 2,000-resample bootstrap interval at seed 42, where `b` is the mean recorded rate of the item's
-disease and horizon over the CohortCal training split (`--b-source train`, the default). The `agent` mode runs the same items inside
-CohortWorld under the two-turn protocol (`configs/eval_cohortcal_agent.toml`) and scores the traces.
+disease and horizon over the CohortCal training split (`--b-source train`, the default). The `agent` mode is the "w/ CW" row: the same items answered
+inside CohortWorld by the untrained model in one turn under the acting prompt
+`prompts/sys_clinician_contrast_v2.txt` (`configs/eval_cohortcal_agent.toml`), scored from the traces.
 
 ## Table 4, the CohortWorld tasks
 

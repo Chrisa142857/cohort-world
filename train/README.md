@@ -25,8 +25,14 @@ git clone https://github.com/PrimeIntellect-ai/prime-rl && cd prime-rl
 git checkout ef9dea1
 cp <this>/cs_grpo.py src/prime_rl/orchestrator/algo/cs_grpo.py
 git apply <this>/prime_rl_ef9dea1_cs_grpo.patch
-uv run rl @ <this>/configs/cw_rl_csgrpo_qwen3.5-9b.toml
+uv run sft @ <this>/configs/cw_sft_qwen3.5-9b_cohort-think.toml   # the cold start
+uv run rl  @ <this>/configs/cw_rl_csgrpo_qwen3.5-9b.toml          # then CS-GRPO
 ```
+
+Training reads the released data through the same five variables the evaluation uses (`CW_PANEL`,
+`CW_OFFICIAL`, `CW_SIDECAR`, `CW_ITEMS`, `CW_PHENOCAL`; see the env block in `reproduce/README.md`):
+the reward ranks answers against `$CW_ITEMS/t3_rate_train.jsonl` and the reference table in
+`$CW_OFFICIAL`, both at run time.
 
 The stages, in order, for each model (each stage starts from the checkpoint the previous one wrote):
 
@@ -37,10 +43,9 @@ The stages, in order, for each model (each stage starts from the checkpoint the 
 | CS-GRPO with psi = 0.3 | `cw_rl_csgrpo_qwen3.5-9b_psi0.3_from-csgrpo-step100.toml` | `cw_rl_csgrpo_qwen3.6-27b_psi0.3_from-csgrpo-step40.toml` |
 
 The cold start reads the demonstrations from `data/sft/cohort_think`, the `sft/cohort_think` directory of
-the Hugging Face dataset (see `data/README.md`). The CS-GRPO reward ranks answers against the `internal`
-reference rates in `$CW_OFFICIAL`. The default table is built from the released train items. To reproduce
-the paper's training rewards exactly, set `CW_OFFICIAL` to `official/paper_training`, which holds the
-table those runs read.
+the Hugging Face dataset (see `data/README.md`). The reference table `$CW_OFFICIAL` holds is built from
+the released train items; to reproduce the paper's training rewards exactly, set `CW_OFFICIAL` to
+`official/paper_training`, which holds the table those runs read.
 
 `cs_grpo.py` is self-checking: `python -m prime_rl.orchestrator.algo.cs_grpo` runs `demo()`, which
 asserts the credit assignment, the M×N matrix path, the success buffer, the row/group baseline, and the
