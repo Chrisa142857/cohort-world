@@ -147,7 +147,7 @@ The supply cannot be grown to rescue 90/5/5. Two measurements settle that:
   * `t2_compose` §2: the one stratum with large supply, `age_band shift` (2,198 pooled balanced cells), was
     DROPPED on a scored ladder -- reading beats a free age rule there by +0.0056 [+0.0000, +0.0167]
     -- and re-adding it requires de-grouping the age branch of `internal._t2_clause`, which is a
-    FROZEN module and a prompt-sentence (MAJOR) change.
+    FROZEN module, so it changes the question every earlier score answered.
 
 THE TRADE, stated: the docstring of `split_of` below promised a cohort lands in the same split on
 T1, T2 and T3. Two ratios break that. What it costs, measured on the frozen T2 items with T1/T3 at
@@ -161,7 +161,6 @@ in a T2 prompt; the agent must `cw_look` first, and then it has read.
 """
 ZERO_FRACTION = 0.5                  # build_items.py's stratified zero/non-zero cell draw, kept
 POP_ZERO_SHARE = 0.727
-SPEC_VERSION = "3.0.0"               # this item schema; bumped when the schema or the dials move
 
 # The benchmark's deliberate no-match share, and the population no-match share measured by census.
 NOMATCH_SHARE_BENCH = 0.38
@@ -823,7 +822,7 @@ def main():
 
     rng = random.Random(a.seed)
     versions = a.versions.split(",")
-    log(f"THE PUBLISHABLE ITEM SET  spec {SPEC_VERSION}  seed {a.seed}  "
+    log(f"THE PUBLISHABLE ITEM SET  seed {a.seed}  "
         f"ratio T1/T3 {RATIO[0]}/{RATIO[1]}/{100 - sum(RATIO)}  "
         f"T2 {T2_RATIO[0]}/{T2_RATIO[1]}/{100 - sum(T2_RATIO)}")
     log(f"panel {PANEL}")
@@ -867,7 +866,7 @@ def main():
     # ---- report
     log("")
     log("=== COUNTS ===")
-    J = {"spec_version": SPEC_VERSION, "seed": a.seed, "ratio": RATIO, "t2_ratio": T2_RATIO, "counts": {}, "dials": {},
+    J = {"seed": a.seed, "ratio": RATIO, "t2_ratio": T2_RATIO, "counts": {}, "dials": {},
          "regime": {}, "splits": {}}
     for tag in ("t1_locate", "t2_delta", "t3_rate"):
         c = {sp: len(out[tag][sp]) for sp in sorted(out[tag])}

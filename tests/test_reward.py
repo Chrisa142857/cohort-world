@@ -522,19 +522,19 @@ def test_commit_accepts_a_string_payload():
 def test_the_version_names_the_code_it_ships_with():
     """THE hole this file existed to have and did not close.
 
-    Mutating `ENV_VERSION` to "9.9.9" once left all 276 tests GREEN. A version nothing checks
-    is not a version, it is a comment that happens to be written into every run directory -- and the
-    whole unrecorded-drift failure is that `NO_ANSWER` moved 0.0 -> -1.0 and `BUDGET` 12 -> 26 on
+    Mutating `ENV_VERSION` to "9.9.9" once left all 276 tests GREEN. An identifier nothing checks
+    is not an identifier, it is a comment that happens to be written into every run directory -- and
+    the whole unrecorded-drift failure is that `NO_ANSWER` moved 0.0 -> -1.0 and `BUDGET` 12 -> 26 on
     one day with nothing on disk saying so. `REWARD_SPEC_VERSION` was caught only by ACCIDENT:
     `_reference_path` globs the table by that string and raises when the glob comes back empty, so
-    renaming the table alongside a bump would have turned it green again.
+    renaming the table alongside it would have turned that green again.
 
     `reward.semantic_hash()` is a content hash of every module whose code can change a reward, with
     comments, docstrings and formatting normalised away by `ast.unparse`. Both directions are red:
 
       * change ALPHA, a threshold, a ladder rung, a branch -> the hash moves under an unchanged
-        version -> the first assert fires;
-      * bump ENV_VERSION with nothing else changed -> the version is not in the table -> the second.
+        identifier -> the first assert fires;
+      * change ENV_VERSION alone -> it is not in the table -> the second.
 
     Verified by mutation, both directions: `ALPHA 1.25 -> 1.30` and
     `ENV_VERSION -> "9.9.9"` each fail this test, with `git diff --numstat` checked non-zero
@@ -543,15 +543,15 @@ def test_the_version_names_the_code_it_ships_with():
     got = R.semantic_hash()
     assert R.ENV_VERSION in R.VERSIONED_SEMANTICS, (
         f"ENV_VERSION is {R.ENV_VERSION!r} and no code is recorded under it.\n"
-        f"Either the version was bumped with no semantic change -- put it back -- or the change is\n"
+        f"Either the identifier changed with no semantic change -- put it back -- or the change is\n"
         f"real: add {R.ENV_VERSION!r}: {got!r} to reward.VERSIONED_SEMANTICS, and say what moved\n"
         f"in a comment beside the entry.")
     assert R.VERSIONED_SEMANTICS[R.ENV_VERSION] == got, (
         f"the frozen surface changed under ENV_VERSION {R.ENV_VERSION!r}: recorded "
         f"{R.VERSIONED_SEMANTICS[R.ENV_VERSION]!r}, code hashes to {got!r}.\n"
-        f"A reward change is a MAJOR bump. Raise ENV_VERSION (and REWARD_SPEC_VERSION if any pinned\n"
-        f"reward constant moved), add the new pair to reward.VERSIONED_SEMANTICS, and\n"
-        f"record which scores it invalidates. Diff the surface with:\n"
+        f"A reward change needs a new ENV_VERSION (and a new REWARD_SPEC_VERSION if any pinned\n"
+        f"reward constant moved), the new pair added to reward.VERSIONED_SEMANTICS, and a record of\n"
+        f"which scores it invalidates. Diff the surface with:\n"
         f"    python -c 'import cohortworld_env.reward as R; print(R._semantic_source())'")
 
 
@@ -654,7 +654,7 @@ def test_a_missing_panel_raises_at_scoring_time_instead_of_paying_more():
 def test_the_move_listing_is_truncated_at_the_pinned_width():
     """`per_axis` was a DEFAULT ARGUMENT of `legal_moves.summary` through the first freeze: in no
     config.yaml, no `CONSTANTS()`, no pinned-constants table -- so 6 could become 3, moving the achievable
-    policy set (a MAJOR change) while every score stayed formally comparable. It withholds 13,179
+    policy set while every score stayed formally comparable. It withholds 13,179
     legal moves across the archive and **no action reveals them**, so the width is contract."""
     from cohortworld_env import legal_moves as LM
     # SIX, written out. Reading `R.PER_AXIS` on both sides is self-referential -- the expected width

@@ -675,7 +675,7 @@ class DeltaTask(_CWTask, vf.Task[DeltaData]):
 # --------------------------------------------------------------------------- prompts
 #
 # Prompt text is part of the reward contract: it changes the achievable policy set, so a change here
-# is a MAJOR bump under REWARD_SPEC_VERSION. The sentence that had to go is "a reply with neither
+# changes the contract REWARD_SPEC_VERSION identifies. The sentence that had to go is "a reply with neither
 # scores zero" -- it is now false. There is no unanswered episode; the agent's most recent reading is
 # its answer until it states a better one.
 

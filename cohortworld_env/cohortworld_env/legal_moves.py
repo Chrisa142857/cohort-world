@@ -160,7 +160,7 @@ def summary(sid: str, per_axis: int = None, extra=()) -> dict:
 
     The default is `reward.PER_AXIS` and NOT a literal 6, which is what it was through the freeze.
     A default argument is not a contract: it was in no `config.yaml` and no `CONSTANTS()` call,
-    so 6 could become 3 -- moving the achievable policy set, which is a MAJOR version change --
+    so 6 could become 3 -- moving the achievable policy set --
     while every score stayed formally comparable. The value is unchanged, so nothing already scored
     is invalidated by naming it; `test_the_move_listing_is_truncated_at_the_pinned_width` pins it.
 

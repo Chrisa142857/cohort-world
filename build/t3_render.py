@@ -453,7 +453,7 @@ def main():
     out = open(a.out, "w") if a.out != "-" else sys.stdout
 
     p(out, f"T3 UNDER THE ITEM-RENDERING SPIRIT -- {a.version}, seed {a.seed}, "
-           f"n_boot {a.n_boot}, reward spec {R.REWARD_SPEC_VERSION}, env {R.ENV_VERSION}")
+           f"n_boot {a.n_boot}")
     A = section_a(states, out)
     counts, pats = A["counts"], A["pats"]
     idxs = {ms: index(states, ms) for ms in pats}
