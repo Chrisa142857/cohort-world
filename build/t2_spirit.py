@@ -498,9 +498,9 @@ def main():
 
     L, J = [], {"per_split": a.per_split, "edges_total": tot, "edges_answerable": kept,
                 "today_noread_unseen": TODAY_NOREAD_UNSEEN, "boot": BOOT, "seed": SEED,
-                "env_version": T.R.ENV_VERSION, "spec": T.R.REWARD_SPEC_VERSION}
+                }
     P = L.append
-    P(f"T2 UNDER THE RENDERING SPIRIT   env {T.R.ENV_VERSION} spec {T.R.REWARD_SPEC_VERSION} "
+    P(f"T2 UNDER THE RENDERING SPIRIT   "
       f"boot {BOOT} seed {SEED}")
     P(f"edge rows {tot:,}; answerable (same-version, both endpoints released) {kept:,} "
       f"({kept/tot:.1%})")

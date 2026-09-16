@@ -401,11 +401,10 @@ def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     items = load(a.split)
     served = [d for d in items if is_served(d)]
-    out = [f"T2 CEILING LADDER  env {R.CONSTANTS()['env_version']} "
-           f"spec {R.REWARD_SPEC_VERSION} alpha {R.ALPHA}",
+    out = [f"T2 CEILING LADDER  alpha {R.ALPHA}",
            f"items {ITEMS}", f"split={a.split}: {len(items)} items, {len(served)} served "
            f"({100*len(served)/len(items):.1f}%), {len(items)-len(served)} unanswerable"]
-    res = {"env_version": R.CONSTANTS()["env_version"], "spec": R.REWARD_SPEC_VERSION,
+    res = {
            "alpha": R.ALPHA, "items": ITEMS, "split": a.split,
            "n_items": len(items), "n_served": len(served)}
 
@@ -494,7 +493,7 @@ def main():
         m = res[f"{a.split} SERVED"]["rung0 always-hedge"]["reward"][0]
         o = res[f"{a.split} SERVED"]["_oracle_mean"]
         base = (f"t2_ceiling_{a.split}_hedge{m:.4f}_oracle{o:.4f}_"
-                f"spec{R.REWARD_SPEC_VERSION}_seed{SEED}")
+                f"seed{SEED}")
         os.makedirs(f"{a.out}/artifacts", exist_ok=True)
         open(f"{a.out}/artifacts/{base}.txt", "w").write(txt + "\n")
         json.dump(res, open(f"{a.out}/artifacts/{base}.json", "w"), indent=1)

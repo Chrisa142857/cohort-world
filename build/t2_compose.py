@@ -400,7 +400,7 @@ def main():
     bl, resolver = bijection_report()
     L, J = [], {}
     P = L.append
-    P(f"T2 ITEM SET, SETTLED   env {T.R.ENV_VERSION} spec {T.R.REWARD_SPEC_VERSION} "
+    P(f"T2 ITEM SET, SETTLED   "
       f"boot {T.BOOT} seed {SEED}")
     P(f"edges {EDGES}")
 
@@ -477,7 +477,7 @@ def main():
       f"{RATIO[0]}/{RATIO[1]}/{100 - sum(RATIO)}; 55/20/25 ties on unseen with a larger train and a")
     P(f"  seen of 20, and is rejected on `seen`. `seen` lands short of 60 under every ratio that")
     P(f"  keeps train usable, and is reported rather than papered over.")
-    P("  This is a MAJOR change: it repartitions the profiles, so it must be taken once for T1, T2")
+    P("  This repartitions the profiles, so it must be taken once for T1, T2")
     P("  and T3 together or the splits stop being profile-disjoint ACROSS tasks.")
     J["ratio_scan"] = rrows
     J["ratio_chosen"] = f"{RATIO[0]}/{RATIO[1]}/{100 - sum(RATIO)}"
@@ -493,8 +493,8 @@ def main():
     P("      vacuously, and age de-grouping has exactly ONE place to bite: `_t2_clause`'s age branch,")
     P("      `the second is in the {code} age band instead`.")
     P("  (2) That branch lives in `cohortworld_env/internal.py`, one of the seven modules")
-    P("      `reward.semantic_hash()` binds. De-grouping it to `about 72` is a PROMPT SENTENCE")
-    P("      change: MAJOR, plus re-certification. Option (b) `exempt the axis` needs that edit and")
+    P("      the reward reads. De-grouping it to `about 72` is a PROMPT SENTENCE")
+    P("      change, so every score before it means something else. Option (b) `exempt the axis` needs that edit and")
     P("      also breaks invariant 1 (one item format). Option (c) `cap the stratum` needs the same")
     P("      edit, only on fewer items.")
     P("  Option (a) DROP the stratum is the only one that costs no frozen-code change: with no")
@@ -630,7 +630,7 @@ def main():
     P("   1. It cannot be SERVED without new code inside the content-hashed surface. `DeltaTaskset`")
     P("      resolves `_audit.from`/`to` through a CohortWorld lattice and a PhenoCal cohort has no")
     P("      state id, so an external T2 split needs a new taskset in `cohortworld_phenocal`, which")
-    P("      `reward.semantic_hash()` binds -- a version bump and a re-certification pass.")
+    P("      the reward reads, so changing it changes what every past score meant.")
     P("   2. Both endpoints must be covered for the agent's two readings to be about the item's")
     P("      cohorts, and per-endpoint coverage is already the binding constraint on T3-external")
     P("      (c = 0.1119; 38.6% of PhenoCal_C2 test items ask about a record source the lattice")

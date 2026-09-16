@@ -1,8 +1,8 @@
 """The pinned CohortWorld reward contract, implemented.
 
 The derivation is the reward definition in Section 3 of the paper; this file is the implementation,
-versioned by `REWARD_SPEC_VERSION`. Any change to a value in the constants block below is a MAJOR bump and
-invalidates every score produced under a previous version.
+identified by `REWARD_SPEC_VERSION`. Any change to a value in the constants block below invalidates
+every score produced before it.
 
 Why one module instead of a method on each Task: the same three rules have to hold for the three
 internal tasks and for the external PhenoCal task, and the last time they were "the same contract"
@@ -42,19 +42,15 @@ from functools import lru_cache
 # --------------------------------------------------------------------------- pinned constants
 
 ENV_VERSION = "7.6.3"
-"""Semantic version of the WHOLE environment.
+"""The identifier of this environment, the INTEGRITY CHECK for everything it scores.
 
 Scope: the cohort and disease IDENTIFIERS, the item sets and splits, the action space (tool
 signatures), the observation space (every field a tool result carries, `at_risk` included), the
-episode and its termination rules, and the reward contract below.
-
-MAJOR: any of those changed -- every prior score is invalidated and no score may be compared across
-the boundary. MINOR: additive only, e.g. a metric no reward reads. PATCH: docs and comments.
-A reward change is by construction a MAJOR bump HERE as well; `REWARD_SPEC_VERSION` exists so a run
-can also name the reward alone, which is the narrower thing a rescoring needs.
+episode and its termination rules, and the reward contract below. A score is comparable with another
+only when both were produced under this identifier.
 
 It lives in this module rather than in `__init__.py` because that file imports nothing on purpose,
-and because a version that is not written into every run directory names nothing a run can be
+and because an identifier that is not written into every run directory names nothing a run can be
 checked against.
 
 A missing panel is loud at SCORING time and at ROLLOUT time alike. `dist`, `entry_cohort` and
@@ -65,19 +61,19 @@ item's own is absent: with `CohortWorld_default_*_states.jsonl` hidden, a quiet 
 that navigated the wrong cohorts for its whole episode. A run with a complete panel behaves
 identically either way.
 
-**The version is bound to the code by content, not by discipline.** A version string that no check
-reads can be mutated with every test still GREEN, which means it names nothing. See `semantic_hash`
-and `VERSIONED_SEMANTICS` below: changing the reward without bumping the version and bumping the
-version without changing the reward both fail, with different messages.
+**The identifier is bound to the code by content, not by discipline.** A string that no check reads
+can be mutated with every test still GREEN, which means it names nothing. See `semantic_hash` and
+`VERSIONED_SEMANTICS` below: changing the reward without changing the identifier, and changing the
+identifier without changing the reward, both fail, with different messages.
 """
 
 REWARD_SPEC_VERSION = "2.0.0"
-"""Semantic version of THIS CONTRACT, not of the code around it.
+"""The identifier of THIS CONTRACT, not of the code around it.
 
-MAJOR: any value below, any reward form, or any prompt sentence that changes the achievable policy
-set -- every prior score is invalidated. MINOR: an additive metric no reward reads. PATCH: docs.
-Written into every run's config.yaml and into every scored artifact's filename, because a constant
-change that no run records makes scores on either side of it silently incomparable.
+Any value below, any reward form, or any prompt sentence that changes the achievable policy set
+makes earlier scores incomparable. Written into every run's config.yaml and into every scored
+artifact's filename, because a constant change that no run records makes scores on either side of it
+silently incomparable.
 """
 
 ALPHA = 1.25
@@ -757,7 +753,7 @@ PER_AXIS = 6
 Pinned HERE rather than left as `summary`'s default argument, which is where it used to live. A
 default argument is not a contract: it appeared in no run's `config.yaml` and in no
 `CONSTANTS()` call, so someone could change 6 to 3 and every score
-stayed formally comparable while the achievable policy set had moved -- which is a MAJOR version change.
+stayed formally comparable while the achievable policy set had moved.
 
 Why it changes the policy set and not just the token count: truncation is not uniform over the axes.
 Across all 38 archived trace files, 980 of 28,599 served `(axis, op)` groups were truncated, hiding
@@ -883,12 +879,12 @@ def semantic_hash() -> str:
 
 
 VERSIONED_SEMANTICS = {"7.6.3": "7c8817fb92465033"}
-"""ENV_VERSION -> the hash of the code that version names.
+"""ENV_VERSION -> the hash of the code it names. THE integrity check.
 
 `semantic_hash()` is computed on the modules in `_SEMANTIC_MODULES` with comments and docstrings
 removed, so it changes exactly when reward-relevant code changes. `tests/test_reward.py` fails if the
-code no longer hashes to the value registered for `ENV_VERSION`: a change to the reward then needs a
-new version and a new entry here, and a version bump with no code change is refused as well.
+code no longer hashes to the value registered here, and equally if the identifier changes while the
+code does not. Either way a score cannot be attributed to code it was not produced by.
 """
 
 

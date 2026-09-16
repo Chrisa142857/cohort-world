@@ -100,8 +100,8 @@ def test_prefer_resolves_through_observe_the_path_a_rollout_takes(lat):
       * it must stand on a cell where the FIRST hit differs from `prefer`, or the identity is satisfied by
         a resolver that ignores `prefer` and takes hits[0]. An earlier version skipped itself for exactly
         that reason, which is honest but proves nothing, so the cell is now SEARCHED for.
-      * the state is searched, never hardcoded: state ids change on a rebuild (that is what MAJOR means
-        here), and a hardcoded id would turn into a false red.
+      * the state is searched, never hardcoded: state ids change on a rebuild, and a hardcoded id
+        would turn into a false red.
     """
     import copy
 

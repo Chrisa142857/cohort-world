@@ -74,7 +74,7 @@ Every path, split, threshold and seed is an argument; nothing is a literal in a 
 ## Repository layout
 
 ```
-cohortworld_env/        lattice, tools, rewards, tasks (ENV 7.6.3)
+cohortworld_env/        lattice, tools, rewards, tasks
 cohortworld_internal/   CohortThink taskset
 cohortworld_locate/     CohortMatch taskset
 cohortworld_delta/      CohortContrast taskset
