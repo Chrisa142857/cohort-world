@@ -11,7 +11,7 @@ Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Mo
 | component | what it is | size |
 |---|---|---|
 | **CohortWorld environment** | the cohort lattice, four tools, tasks and rewards, served through [`verifiers`](https://github.com/PrimeIntellect-ai/verifiers) | 20,180 cohorts at three coding depths |
-| **CohortCal** | a calibration benchmark: written histories with a disease and horizon, answered with a percentage, scored against the recorded incidence | 70,378 items over 3,198 cohorts disjoint from CohortWorld, of which the 31,784 test items over 1,274 held-out cohorts are scored |
+| **CohortCal** | a calibration benchmark: written histories with a disease and horizon, answered with a percentage, scored against the recorded incidence | 70,378 items over 3,198 cohorts disjoint from CohortWorld, of which the 31,784 test items (the paper's unseen split) over 1,274 held-out cohorts are scored |
 | **CohortThink** | the diagnostic simulation inside the environment, with CohortMatch and CohortContrast read off its episodes | 16,770 / 880 / 943 items (train / seen / unseen) |
 | **CS-GRPO** | the training algorithm, a population reward for a population metric, as a plug-in to [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) | `train/` |
 | **Checkpoints** | Qwen3.5-9B and Qwen3.6-27B after the cold start, after CS-GRPO, and after CS-GRPO with $\psi$ | six model repositories, `cohortworld-qwen3.5-9b-*` and `cohortworld-qwen3.6-27b-*` |
@@ -34,7 +34,7 @@ A budget of 26 calls. A group specific enough to match one patient is usually to
 Three tasks, all served as questions in words with no cohort identity, size or rate in them:
 
 - **CohortThink** (CT) estimate the probability of a first diagnosis of $D$ within $h$ years for this history. Scored by AUROC on $r > b$ with $b$ the disease's own incidence, plus calibration slope and the share of answers closer to the truth than $b$.
-- **CohortMatch** (CM) did the answer land on the level of the reference group, the cohort one step up the coding tree that publishes a rate. Exact match of $\hat r$ against that group's rate.
+- **CohortMatch** (CM) did the answer land on the level of the reference cohort, the cohort one step up the coding tree that publishes a rate. Exact match of $\hat r$ against that group's rate.
 - **CohortContrast** (CC) did the difference the answer adds on top of that level point the right way. Three-way sign agreement, items with no difference excluded.
 
 CM and CC are properties of the number, so a model with no tools is scored on the same two questions as an agent.
