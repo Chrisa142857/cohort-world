@@ -65,9 +65,8 @@ def score(rows):
             c_n += 1; c_ok += sign(r_hat - rr) == sign(y - rr)
     return m_n, m_ex, mb_n, mb_ok, c_n, c_ok
 
-def from_run(d):
-    global a
-    F = glob.glob(os.path.join(a.experiments, d, "outputs", "*", "traces.jsonl"))
+def from_run(d, experiments):
+    F = glob.glob(os.path.join(experiments, d, "outputs", "*", "traces.jsonl"))
     return from_traces(F[0]) if F else None
 
 def from_traces(path):
@@ -100,27 +99,34 @@ def from_singleturn(f):
                      r.get("disease"), r.get("horizon")))
     return rows
 
-ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-ap.add_argument("--run", nargs="*", default=[], help="run directories holding outputs/*/traces.jsonl (two-turn agent rows)")
-ap.add_argument("--singleturn", nargs="*", default=[], help="jsonl files written by singleturn_t3.py (no-tool rows)")
-ap.add_argument("--traces", nargs="*", default=[], help="two-turn trace files by path (the released paper_outputs copies)")
-ap.add_argument("--items", default=os.path.join(os.environ.get("CW_ITEMS", ""), "t3_rate_unseen.jsonl"),
-                help="the CohortThink item file the single-turn rows answered; default $CW_ITEMS/t3_rate_unseen.jsonl")
-ap.add_argument("--experiments", default=os.environ.get("CW_EXPERIMENTS", "experiments"),
-                help="directory the --run names are relative to; default $CW_EXPERIMENTS or ./experiments")
-a = ap.parse_args()
-ITEMS_FILE = a.items
-print(f"{'row':46}{'CM exact':>12}{'CM near-b':>12}{'CC dir':>12}{'n':>7}")
-for d in a.run:
-    rows = from_run(d)
-    if not rows: print(f"{d[:48]:50} no traces"); continue
-    mn, mex, mbn, mbo, cn, co = score(rows)
-    print(f"{d[:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
-for f in a.traces:
-    rows = from_traces(f)
-    mn, mex, mbn, mbo, cn, co = score(rows)
-    print(f"{f.split('/')[-1][:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
-for f in a.singleturn:
-    rows = from_singleturn(f)
-    mn, mex, mbn, mbo, cn, co = score(rows)
-    print(f"{f.split('/')[-1][:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
+ITEMS_FILE = os.path.join(os.environ.get("CW_ITEMS", ""), "t3_rate_unseen.jsonl")
+
+def main():
+    global ITEMS_FILE
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--run", nargs="*", default=[], help="run directories holding outputs/*/traces.jsonl (two-turn agent rows)")
+    ap.add_argument("--singleturn", nargs="*", default=[], help="jsonl files written by singleturn_t3.py (no-tool rows)")
+    ap.add_argument("--traces", nargs="*", default=[], help="two-turn trace files by path (the released paper_outputs copies)")
+    ap.add_argument("--items", default=ITEMS_FILE,
+                    help="the CohortThink item file the single-turn rows answered; default $CW_ITEMS/t3_rate_unseen.jsonl")
+    ap.add_argument("--experiments", default=os.environ.get("CW_EXPERIMENTS", "experiments"),
+                    help="directory the --run names are relative to; default $CW_EXPERIMENTS or ./experiments")
+    a = ap.parse_args()
+    ITEMS_FILE = a.items
+    print(f"{'row':46}{'CM exact':>12}{'CM near-b':>12}{'CC dir':>12}{'n':>7}")
+    for d in a.run:
+        rows = from_run(d, a.experiments)
+        if not rows: print(f"{d[:48]:50} no traces"); continue
+        mn, mex, mbn, mbo, cn, co = score(rows)
+        print(f"{d[:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
+    for f in a.traces:
+        rows = from_traces(f)
+        mn, mex, mbn, mbo, cn, co = score(rows)
+        print(f"{f.split('/')[-1][:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
+    for f in a.singleturn:
+        rows = from_singleturn(f)
+        mn, mex, mbn, mbo, cn, co = score(rows)
+        print(f"{f.split('/')[-1][:44]:46}{100*mex/max(mn,1):>11.1f}%{100*mbo/max(mbn,1):>11.1f}%{100*co/max(cn,1):>11.1f}%{cn:>7}")
+
+if __name__ == "__main__":
+    main()
