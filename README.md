@@ -47,7 +47,7 @@ pip install -r requirements-freeze.txt
 pip install --no-deps -e cohortworld_env -e cohortworld_internal -e cohortworld_locate -e cohortworld_delta -e cohortworld_phenocal
 
 # data from Hugging Face (see data/README.md)
-hf download Chrisa142857/cohort-world --repo-type dataset --local-dir data
+hf download Ziquan/cohort-world --repo-type dataset --local-dir data
 export CW_PANEL=$PWD/data/official CW_OFFICIAL=$PWD/data/official CW_SIDECAR=$PWD/data/official
 export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 
@@ -90,8 +90,8 @@ tools/                  the release gate
 data/                   MANIFEST of the dataset on HuggingFace
 ```
 
-Data: https://huggingface.co/datasets/Chrisa142857/cohort-world (cohorts, CohortCal, task items, SFT
-demonstrations, and the model outputs behind both tables). Checkpoints: the six `Chrisa142857/cohortworld-*`
+Data: https://huggingface.co/datasets/Ziquan/cohort-world (cohorts, CohortCal, task items, SFT
+demonstrations, and the model outputs behind both tables). Checkpoints: the six `Ziquan/cohortworld-*`
 model repositories. `reproduce/rescore.sh` re-scores the paper's own outputs without running a model.
 
 ## Ethics and scope
