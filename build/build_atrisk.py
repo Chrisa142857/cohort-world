@@ -22,6 +22,12 @@ from multiprocessing import Pool
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "cohortworld_env"))
+
+# Every root is an argument, never a literal. Left unset, the placeholder makes the first open fail
+# with a path that says what is missing, rather than a path that names a machine or its owner.
+PANEL = os.environ.get("CW_PANEL") or "CW_PANEL-is-not-set-point-it-at-the-official-directory"
+PANEL_SRC = os.environ.get("CW_PANEL_SRC") or "CW_PANEL_SRC-is-not-set-point-it-at-the-panel-pickles"
+PRIVATE = os.environ.get("CW_PRIVATE") or "CW_PRIVATE-is-not-set-point-it-at-the-private-store"
 import panel_common as PC
 import OK__build_cohortworld_env as B
 
@@ -91,15 +97,14 @@ def _one(task):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--inter", default="/ram/USERS/ziquanw/digitaltwinreward/ukb_qa_brain/"
-                                       "output_panel/panel_intermediate.pkl")
+    ap.add_argument("--inter", default=os.path.join(PANEL_SRC, "panel_intermediate.pkl"))
     ap.add_argument("--filterout", default="ZRUVWXY")
     ap.add_argument("--grans", default="1,2,3")
     ap.add_argument("--workers", type=int, default=90)
     ap.add_argument("--versions", default="C1,C2,default")
-    ap.add_argument("--panel", default="/work/USERS/ziquanw/cohortworld/official")
-    ap.add_argument("--aug", default="/work/USERS/ziquanw/cohortworld_private/augment")
-    ap.add_argument("--out", default="/work/USERS/ziquanw/cohortworld/official")
+    ap.add_argument("--panel", default=PANEL)
+    ap.add_argument("--aug", default=os.path.join(PRIVATE, "augment"))
+    ap.add_argument("--out", default=PANEL)
     a = ap.parse_args()
 
     print("[atrisk] loading panel ...", flush=True)

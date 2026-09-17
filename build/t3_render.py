@@ -52,8 +52,8 @@ SP = [0.0, 0.5, 1.0, 2.0, 3.0, 5.0]
 GRID = [(w, s) for w in WS for s in SP]
 TARGET_LO, TARGET_HI = 2, 8                    # the spirit's candidate-count window
 POP_ZERO_SHARE = 0.727                         # published with the item set
-PHENOCAL = os.environ.get(
-    "CW_PHENOCAL", "/ram/USERS/ziquanw/digitaltwinreward/ukb_qa_brain/output_panel")
+PHENOCAL = (os.environ.get("CW_PHENOCAL")
+            or "CW_PHENOCAL-is-not-set-point-it-at-the-PhenoCal-panel-directory")
 
 
 # --------------------------------------------------------------------------- the lattice

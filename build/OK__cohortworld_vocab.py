@@ -17,11 +17,13 @@ import json, os, pickle, sys, collections
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from OK__build_cohortworld_v2 import VERSIONS, sysname
-PANEL = os.environ.get("CW_PANEL", "/work/USERS/ziquanw/cohortworld/official")
+PANEL = os.environ.get("CW_PANEL", f"{os.path.dirname(HERE)}/official")
+# unset, the placeholder fails on open naming what is missing, rather than naming a machine
+HX = os.environ.get("CW_HX") or "CW_HX-is-not-set-point-it-at-the-history-pickle"
 
 
 def main():
-    hx = pickle.load(open(os.environ.get("CW_HX", "/ram/USERS/ziquanw/digitaltwinreward/ukb_qa_brain/output_panel/cohortworld_hx_alldates.pkl"), "rb"))
+    hx = pickle.load(open(HX, "rb"))
     full = {"O": set(), "B": set()}
     for sysk, key in (("O", "opcs"), ("B", "bnf")):
         for codes in hx[key].values():
