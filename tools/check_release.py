@@ -12,7 +12,9 @@ What it refuses, and why each rule exists:
     (labels.k = 1 items), `*_private_n*`, `PhenoCal_*_full*` (its per-(disease, horizon) means include
     test-set outcomes, so it must not ship as a scoring file);
   * absolute paths into the lab file systems and the author's user name, which leak where private
-    data lives and break every clone;
+    data lives, break every clone, and deanonymise a double-blind submission. A `release-gate:
+    allow-file` build script does NOT get a pass on these two: its waiver covers only naming a
+    private store or a host, which is the provenance being recorded;
   * names of the private item and count stores (`cohortworld_private`, `private_counts`);
   * any tracked file over --max-mb (data belongs on the dataset host, not in git);
   * in data mode: any JSONL row whose `labels.k` is below --min-k, or that has no `labels.k` when the
@@ -41,10 +43,15 @@ CONTENT_RULES = [
 # semantic hash, which is computed on code with comments stripped.
 ALLOW = re.compile(r"release-gate:\s*allow")
 # A build script may declare `release-gate: allow-file` in its first 5 lines. Only honoured under build/:
-# those scripts ran against the private UKB extract and are shipped for provenance, so what they read
-# is shown as it was rather than rewritten.
+# those scripts ran against the private UKB extract and are shipped for provenance, so the NAME of a
+# private table they read is shown as it was rather than rewritten.
 ALLOW_FILE = re.compile(r"release-gate:\s*allow-file")
 ALLOW_FILE_DIRS = ("build/",)
+# ...but the waiver is for provenance, not a blanket exemption. Naming the private store is the fact
+# being recorded; an absolute lab path or the author's user name is not. Those identify a machine and
+# a person, they break every clone, and under double-blind review they deanonymise the submission --
+# no provenance argument reaches them. This list is why a whole-file waiver is safe to offer at all.
+ALLOW_FILE_WAIVES = ("private-store", "host-name")
 # The gate names every pattern it refuses, so its own text is exempt from the content rules.
 SELF = "tools/check_release.py"
 TEXT_EXT = {".py", ".sh", ".toml", ".md", ".txt", ".json", ".yaml", ".yml", ".cfg", ".ini", ".patch", ".tsv", ".cff", ""}
@@ -81,14 +88,15 @@ def check_content(root, paths, max_mb):
             lines = open(full, encoding="utf-8").read().splitlines()
         except UnicodeDecodeError:
             continue
-        if p.startswith(ALLOW_FILE_DIRS) and any(ALLOW_FILE.search(l) for l in lines[:5]):
-            continue
+        waived = (ALLOW_FILE_WAIVES if p.startswith(ALLOW_FILE_DIRS)
+                  and any(ALLOW_FILE.search(l) for l in lines[:5]) else ())
         for i, line in enumerate(lines, 1):
             if ALLOW.search(line):
                 continue
             for rule, rx in CONTENT_RULES:
-                m = rx.search(line)
-                if m:
+                if rule in waived:
+                    continue
+                if rx.search(line):
                     yield f"{p}:{i}: {rule}: {line.strip()[:120]}"
 
 
@@ -173,13 +181,21 @@ def selftest():
         if list(check_content(d, ["allowed.py"], 5)):
             fails.append("allow marker did not suppress its line")
         os.makedirs(os.path.join(d, "build"), exist_ok=True); os.makedirs(os.path.join(d, "gen"), exist_ok=True)
-        body = '# release-gate: allow-file (provenance)\nP = "/work/USERS/someone/private_counts"\n'
+        body = '# release-gate: allow-file (provenance)\nP = "cohortworld_private"\nH = "ssh hummer"\n'
         open(os.path.join(d, "build", "b.py"), "w").write(body)
         open(os.path.join(d, "gen", "b.py"), "w").write(body)
         if list(check_content(d, ["build/b.py"], 5)):
-            fails.append("allow-file under build/ did not suppress")
+            fails.append("allow-file under build/ did not suppress the rules it waives")
         if not list(check_content(d, ["gen/b.py"], 5)):
             fails.append("allow-file was honoured outside build/")
+        # the waiver is narrow: provenance never licenses a lab path or a user name, so a build
+        # script carrying one is still refused. Without this case the waiver could widen unnoticed.
+        leaky = '# release-gate: allow-file (provenance)\nP = "/work/USERS/someone/x"\nU = "ziquanw"\n'
+        open(os.path.join(d, "build", "leaky.py"), "w").write(leaky)
+        got = {r.split(": ")[1] for r in check_content(d, ["build/leaky.py"], 5)}
+        for rule in ("abs-path", "user-name"):
+            if rule not in got:
+                fails.append(f"allow-file wrongly suppressed {rule} under build/")
         good = os.path.join(d, "good.py")
         open(good, "w").write('P = os.environ.get("CW_ITEMS")\n')
         if list(check_content(d, ["good.py"], 5)):

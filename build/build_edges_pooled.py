@@ -152,7 +152,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--versions", default="C1,C2,default")
     ap.add_argument("--grans", default="1,2,3")
-    ap.add_argument("--out", default="/work/USERS/ziquanw/cohortworld/official")
+    ap.add_argument("--out", default=PANEL)   # $CW_PANEL, else <repo>/official
     a = ap.parse_args()
     VERS = [v.strip() for v in a.versions.split(",")]
     GRANS = [int(g) for g in a.grans.split(",")]

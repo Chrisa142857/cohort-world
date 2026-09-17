@@ -50,8 +50,8 @@ import t2_spirit as TS                                      # noqa: E402
 from cohortworld_env.lattice import _shared, PANEL          # noqa: E402
 
 EDGES = f"{PANEL}/CohortWorld_pooled_edges.jsonl"
-PHENOCAL = os.environ.get("CW_PHENOCAL",
-                          "/ram/USERS/ziquanw/digitaltwinreward/ukb_qa_brain/output_panel")
+PHENOCAL = (os.environ.get("CW_PHENOCAL")
+            or "CW_PHENOCAL-is-not-set-point-it-at-the-PhenoCal-panel-directory")
 GRAN = {"C1": 1, "C2": 2, "default": 3}
 SPLITS = ("train", "seen", "unseen")
 AGE = ("age_band", "shift")

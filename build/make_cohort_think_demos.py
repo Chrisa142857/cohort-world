@@ -26,7 +26,7 @@ selection rule no policy could ever execute.
 """
 import argparse, asyncio, collections, functools, hashlib, itertools, json, os, random, re, statistics as st, sys, time
 
-CW = "/work/USERS/ziquanw/cohortworld"
+CW = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the repository root, derived
 sys.path.insert(0, CW + "/cohortworld_env"); sys.path.insert(0, CW + "/gen")
 from cohortworld_env.lattice import _shared, OPCS_CH, BNF_CH            # noqa: E402
 from code_descriptions import describe_icd10                            # noqa: E402

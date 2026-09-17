@@ -40,21 +40,25 @@ import argparse, collections, glob, hashlib, json, os, random, re, statistics as
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-PANEL = f"{REPO}/official"
-PRIVATE_ROOT = "/work/USERS/ziquanw/cohortworld_private"
+PANEL = os.environ.get("CW_PANEL", f"{REPO}/official")   # as cohortworld_env.lattice resolves it
 
 # --------------------------------------------------------------------------- (a) the audit hook
 
 PRIVATE_PATTERNS = (
-    f"{PRIVATE_ROOT}/augment/",          # per-subject member lists, ancestors, frontiers
+    "cohortworld_private",               # per-subject member lists, ancestors, frontiers
     "_private_counts.jsonl",             # per-state exact event/at-risk counts
-    "/ram/USERS/ziquanw/digitaltwinreward/",   # the source history pickles
+    "cohortworld_hx_alldates",           # the source history pickles, matched by file name rather
+    "panel_intermediate",                #   than by a path that would also name a machine
     "_subject.jsonl",                    # whatever the private sibling entry point writes
 )
-"""The private history tables, by path. This is a DENYLIST and that is a deliberate ceiling: an
+"""The private history tables, by name. This is a DENYLIST and that is a deliberate ceiling: an
 allowlist would have to enumerate the interpreter's own file access (every `.py`, every `.pyc`,
 `site-packages`, `/proc`), and a guard nobody can read is a guard nobody maintains.
-# ponytail: denylist over the four named private sources; widen it if a fifth is ever created."""
+
+Matching on the store and file names rather than on absolute roots is what lets this file ship: a
+root is a property of the machine that held the extract, and naming it here would publish that. It
+also widens the guard, since the tables are caught wherever they are mounted.
+# ponytail: denylist over the named private sources; widen it if a sixth is ever created."""
 
 
 class PrivateAccess(RuntimeError):
@@ -631,7 +635,7 @@ def selfcheck():
     r = subprocess.run([sys.executable, "-c",
                         f"import sys; sys.path.insert(0, {HERE!r});\n"
                         "import render_spirit as RS; RS.install_private_guard()\n"
-                        f"open({PRIVATE_ROOT!r} + '/augment/CohortWorld_C2_members.jsonl')"],
+                        "open('cohortworld_private/augment/CohortWorld_C2_members.jsonl')"],
                        capture_output=True, text=True)
     assert r.returncode != 0 and "PrivateAccess" in r.stderr, r.stderr[-400:]
     # ...and it does NOT fire on the released panel, or the build could not run at all
