@@ -2,6 +2,14 @@
 
 **Aligning real-world data-driven diagnostics and language models.**
 
+**Website: https://ziquan-cohort-world.static.hf.space** — the CohortCal leaderboard with per-model calibration, every CohortThink episode behind Table 4, the 29,884-cohort collection with a patient-matching search, and the cohort graph.
+
+## News
+
+- 2026-09-16 — Companion website launched (leaderboard, paper episodes, cohort collection, cohort graph).
+- 2026-09-16 — Dataset `Ziquan/cohort-world` and the Qwen3.5-9B checkpoints (SFT, CS-GRPO, CS-GRPO+ψ) are public on Hugging Face.
+- 2026-09-16 — DeepSeek-V4.1-Flash added to the CohortCal leaderboard under the Table 3 protocol (AUROC 0.567, first among single-turn models; not in the paper).
+
 CohortWorld is an interactive environment for language agents built from UK Biobank. Every state is a real, $k$-anonymous cohort keyed on a recorded history of diagnoses (ICD-10), procedures (OPCS-4) and prescriptions (BNF), and every cohort publishes the measured incidence of each disease over each follow-up horizon. An agent estimates one patient's risk by walking to a recorded group, reading its rate, changing one feature at a time and reading again, so its answer is a published number reached by a comparison it has stated rather than a prevalence recalled from pretraining.
 
 Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Models* (under review). Code is in this repository; the data is on HuggingFace, linked below.
