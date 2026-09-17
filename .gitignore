@@ -42,6 +42,9 @@
 !data/README.md
 !data/MANIFEST.tsv
 
+# ---- website screenshots, shown in place of the live URL while review is double-blind ----
+!docs/site/*.png
+
 # ---- never, even inside an allowed directory (last matching rule wins) ----
 __pycache__/
 *.pyc

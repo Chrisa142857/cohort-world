@@ -2,12 +2,21 @@
 
 **Aligning real-world data-driven diagnostics and language models.**
 
-**Website: https://ziquan-cohort-world.static.hf.space** — the CohortCal leaderboard with per-model calibration, every CohortThink episode behind Table 4, the 29,884-cohort collection with a patient-matching search, and the cohort graph.
+**Companion website.** A public site accompanies the release with the CohortCal leaderboard and per-model calibration, the diagnostic tasks with per-model breakdowns, every agent episode behind the results, the 29,884-cohort collection with a patient-matching search, and the cohort graph. The link is withheld during review; screenshots below.
+
+<p align="center">
+<img src="docs/site/leaderboard.png" width="49%" alt="CohortCal leaderboard with bootstrap intervals and the diagnostic-tasks table" />
+<img src="docs/site/model.png" width="49%" alt="One model: reliability, resolution by cohort size, breakdowns" />
+<img src="docs/site/task.png" width="49%" alt="One diagnostic-tasks row: AUROC by coding depth and horizon" />
+<img src="docs/site/episode.png" width="49%" alt="An agent episode with its tool calls and score" />
+<img src="docs/site/cohorts.png" width="49%" alt="The cohort collection filtered to one age band, sex and condition" />
+<img src="docs/site/graph.png" width="49%" alt="One cohort and every legal move around it" />
+</p>
 
 ## News
 
-- 2026-09-16 — Companion website launched (leaderboard, paper episodes, cohort collection, cohort graph).
-- 2026-09-16 — Dataset `Ziquan/cohort-world` and the Qwen3.5-9B checkpoints (SFT, CS-GRPO, CS-GRPO+ψ) are public on Hugging Face.
+- 2026-09-16 — Companion website built (leaderboard, agent episodes, cohort collection, cohort graph).
+- 2026-09-16 — Dataset and the Qwen3.5-9B checkpoints (SFT, CS-GRPO, CS-GRPO+ψ) are public on Hugging Face.
 - 2026-09-16 — DeepSeek-V4.1-Flash added to the CohortCal leaderboard under the Table 3 protocol (AUROC 0.567, first among single-turn models; not in the paper).
 
 CohortWorld is an interactive environment for language agents built from UK Biobank. Every state is a real, $k$-anonymous cohort keyed on a recorded history of diagnoses (ICD-10), procedures (OPCS-4) and prescriptions (BNF), and every cohort publishes the measured incidence of each disease over each follow-up horizon. An agent estimates one patient's risk by walking to a recorded group, reading its rate, changing one feature at a time and reading again, so its answer is a published number reached by a comparison it has stated rather than a prevalence recalled from pretraining.
