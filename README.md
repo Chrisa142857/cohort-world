@@ -2,7 +2,13 @@
 
 **Aligning real-world data-driven diagnostics and language models.**
 
-**Companion website.** A public site accompanies the release with the CohortCal leaderboard and per-model calibration, the diagnostic tasks with per-model breakdowns, every agent episode behind the results, the 29,884-cohort collection with a patient-matching search, and the cohort graph. The link is withheld during review; screenshots below.
+Ziquan Wei, Tingting Dan, Guorong Wu (University of North Carolina at Chapel Hill)
+
+NeurIPS 2026 Workshop on World Models for High-Stakes Health (WMHS), poster, non-archival.
+
+[**Project page**](https://ziquan-cohort-world.static.hf.space/) · [**Paper**](https://openreview.net/forum?id=rBTjac6Cp7) · [**Dataset**](https://huggingface.co/datasets/Ziquan/cohort-world) · [**Checkpoints**](https://huggingface.co/Ziquan)
+
+The project page hosts the CohortCal leaderboard and per-model calibration, the diagnostic tasks with per-model breakdowns, every agent episode behind the results, the 29,884-cohort collection with a patient-matching search, and the cohort graph.
 
 <p align="center">
 <img src="docs/site/leaderboard.png" width="49%" alt="CohortCal leaderboard with bootstrap intervals and the diagnostic-tasks table" />
@@ -15,13 +21,14 @@
 
 ## News
 
+- 2026-10 — Accepted as a poster at the NeurIPS 2026 Workshop on World Models for High-Stakes Health (WMHS); the repository and the project page are public.
 - 2026-09-16 — Companion website built (leaderboard, agent episodes, cohort collection, cohort graph).
 - 2026-09-16 — Dataset and the Qwen3.5-9B checkpoints (SFT, CS-GRPO, CS-GRPO+ψ) are public on Hugging Face.
 - 2026-09-16 — DeepSeek-V4.1-Flash added to the CohortCal leaderboard under the Table 3 protocol (AUROC 0.567, first among single-turn models; not in the paper).
 
 CohortWorld is an interactive environment for language agents built from UK Biobank. Every state is a real, $k$-anonymous cohort keyed on a recorded history of diagnoses (ICD-10), procedures (OPCS-4) and prescriptions (BNF), and every cohort publishes the measured incidence of each disease over each follow-up horizon. An agent estimates one patient's risk by walking to a recorded group, reading its rate, changing one feature at a time and reading again, so its answer is a published number reached by a comparison it has stated rather than a prevalence recalled from pretraining.
 
-Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Models* (under review). Code is in this repository; the data is on HuggingFace, linked below.
+Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Models*, NeurIPS 2026 Workshop WMHS (non-archival). Code is in this repository; the data is on HuggingFace, linked below.
 
 ## What is released
 
@@ -118,11 +125,13 @@ This work uses UK Biobank under an approved application. A number produced here 
 ## Citation
 
 ```bibtex
-@inproceedings{cohortworld2027,
+@inproceedings{wei2026cohortworld,
   title     = {CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Models},
-  author    = {Anonymous},
-  booktitle = {Under review},
-  year      = {2027}
+  author    = {Wei, Ziquan and Dan, Tingting and Wu, Guorong},
+  booktitle = {NeurIPS 2026 Workshop on World Models for High-Stakes Health},
+  note      = {Non-archival},
+  year      = {2026},
+  url       = {https://openreview.net/forum?id=rBTjac6Cp7}
 }
 ```
 
