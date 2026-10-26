@@ -18,7 +18,7 @@ import json, os
 # Same data root as the environment: $CW_OFFICIAL if set, else official/ beside this checkout.
 MATRIX = os.environ.get("CW_MARGINAL", os.path.join(
     os.environ.get("CW_OFFICIAL", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "official")),
-    "UKB_marginal_incidence_landmark_gplinked_3ver.json"))
+    "marginal_incidence_landmark_gplinked_3ver.json"))
 _M = None
 
 

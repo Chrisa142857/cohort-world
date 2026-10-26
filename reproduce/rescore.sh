@@ -4,6 +4,9 @@
 # the reason given in reproduce/README.md (the released marginal table suppresses small cells);
 # every other number reproduces exactly.
 #
+# Needs the incidence labels and the agent traces, which the public dataset does not carry; both are
+# available on request (data/README.md). The script stops if the CohortCal test answers are hidden.
+#
 #   CW_OFFICIAL=data/official CW_PHENOCAL=data/cohortcal CW_ITEMS=data/items \
 #   reproduce/rescore.sh data/paper_outputs
 set -euo pipefail
@@ -11,6 +14,14 @@ CW=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 P=${1:?path to paper_outputs}
 : "${CW_OFFICIAL:?}" "${CW_PHENOCAL:?}" "${CW_ITEMS:?}"
 export CW_OFFICIAL CW_PHENOCAL CW_ITEMS CW_PANEL="${CW_PANEL:-$CW_OFFICIAL}" CW_SIDECAR="${CW_SIDECAR:-$CW_OFFICIAL}"
+if ! python - "$CW_PHENOCAL/PhenoCal_C2_test.jsonl" <<'PY'
+import json, sys
+sys.exit(0 if json.loads(open(sys.argv[1]).readline())["ground_truth"]["rate"] is not None else 1)
+PY
+then
+  echo "rescore.sh: the CohortCal test answers in $CW_PHENOCAL are hidden; the labels are available on request (data/README.md)" >&2
+  exit 2
+fi
 
 echo "== Table 3, CohortCal (b = CohortCal train-split mean)"
 for r in qwen3.5-2b qwen3.5-4b qwen3.5-9b qwen3.5-27b gemma3-4b gemma3-27b medgemma4b medgemma27b llama8b mistral24b claude-sonnet-5 gemini-3.5-flash-lite; do

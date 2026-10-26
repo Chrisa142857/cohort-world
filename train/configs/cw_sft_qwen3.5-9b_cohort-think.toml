@@ -31,7 +31,7 @@ enable_thinking = false
 
 [data]
 type = "sft"
-name = "data/sft/cohort_think"  # the cold-start demonstrations: sft/cohort_think in the Hugging Face dataset (built by build/make_cohort_think_demos.py)
+name = "data/sft/cohort_think"  # the cold-start demonstrations, built by build/make_cohort_think_demos.py; not in the public dataset, available on request
 splits = ["train"]
 seed = 42
 batch_size = 48         # world_size 4 x micro_batch 1 must divide it: 48/4 = 12 micro-steps per rank
@@ -58,7 +58,7 @@ interval = 10
 
 [val.data]
 type = "sft"
-name = "data/sft/cohort_think"  # the cold-start demonstrations: sft/cohort_think in the Hugging Face dataset (built by build/make_cohort_think_demos.py)
+name = "data/sft/cohort_think"  # the cold-start demonstrations, built by build/make_cohort_think_demos.py; not in the public dataset, available on request
 splits = ["validation"]
 batch_size = 24
 micro_batch_size = 1

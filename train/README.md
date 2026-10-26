@@ -42,10 +42,12 @@ The stages, in order, for each model (each stage starts from the checkpoint the 
 | CS-GRPO | `cw_rl_csgrpo_qwen3.5-9b.toml` | `cw_rl_csgrpo_qwen3.6-27b.toml` |
 | CS-GRPO with psi = 0.3 | `cw_rl_csgrpo_qwen3.5-9b_psi0.3_from-csgrpo-step100.toml` | `cw_rl_csgrpo_qwen3.6-27b_psi0.3_from-csgrpo-step40.toml` |
 
-The cold start reads the demonstrations from `data/sft/cohort_think`, the `sft/cohort_think` directory of
-the Hugging Face dataset (see `data/README.md`). The reference table `$CW_OFFICIAL` holds is built from
-the released train items; to reproduce the paper's training rewards exactly, set `CW_OFFICIAL` to
-`official/paper_training`, which holds the table those runs read.
+The cold start reads the demonstrations from `data/sft/cohort_think`. They are not in the public
+dataset, because their answers state rate differences, and they are available on request (see
+`data/README.md`). The reward's reference table is built under `$CW_OFFICIAL` from the train items'
+answers, which the public dataset hides, so training needs the labels, also available on request. To
+reproduce the paper's training rewards exactly, set `CW_OFFICIAL` to the directory that holds the table
+those runs read (`official/paper_training`, on request as well).
 
 `cs_grpo.py` is self-checking: `python -m prime_rl.orchestrator.algo.cs_grpo` runs `demo()`, which
 asserts the credit assignment, the M×N matrix path, the success buffer, the row/group baseline, and the

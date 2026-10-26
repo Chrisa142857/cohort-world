@@ -4,6 +4,10 @@ Both entry points take an OpenAI-compatible endpoint. Serve the model however yo
 with `--enable-auto-tool-choice` and the model family's tool-call parser), then point the script at it.
 Every path is an argument or an environment variable; nothing in the scripts names a machine.
 
+The public dataset hides the incidence labels (see its card), and every scorer below reads them, so
+these scripts score a model only with the full labels, which are available on request. With the public
+data alone, generate the predictions and send them as the dataset card describes.
+
 ```bash
 export CW_PANEL=/path/to/cohorts             # the released cohort collection (official/): lattice, moves, disease tables
 export CW_OFFICIAL=$CW_PANEL                 # reference rates and the marginal table, same directory
@@ -65,11 +69,12 @@ reward reference, not the UK Biobank marginal this column is defined with.
 
 ## Re-scoring the paper's own outputs
 
-The dataset's `paper_outputs/` holds the model outputs behind every row of both tables, single-turn
-records for Table 3 and episode traces for Table 4, named by row. `reproduce/rescore.sh
-data/paper_outputs` scores them with the same scorers and prints both tables without running a
-model. CM, CC, calls per item and every Table 3 number reproduce exactly; CT AUROC lands within
-about 0.03 for the reason above.
+The dataset's `paper_outputs/` holds the single-turn records behind the Table 3 rows and the two
+no-tool Table 4 rows, named by row, without the true rates. The episode traces behind the agent rows
+are not public, because their tool results show cohort rates. Given the labels and the traces, both
+available on request, `reproduce/rescore.sh data/paper_outputs` scores them with the same scorers and
+prints both tables without running a model. CM, CC, calls per item and every Table 3 number
+reproduce exactly; CT AUROC lands within about 0.03 for the reason above.
 
 ## What a run leaves behind
 

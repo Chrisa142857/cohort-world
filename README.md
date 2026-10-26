@@ -8,13 +8,13 @@ NeurIPS 2026 Workshop on World Models for High-Stakes Health (WMHS), poster, non
 
 [**Project page**](https://ziquan-cohort-world.static.hf.space/) · [**Paper**](https://openreview.net/forum?id=rBTjac6Cp7) · [**Dataset**](https://huggingface.co/datasets/Ziquan/cohort-world) · [**Checkpoints**](https://huggingface.co/Ziquan)
 
-The project page hosts the CohortCal leaderboard and per-model calibration, the diagnostic tasks with per-model breakdowns, every agent episode behind the results, the 29,884-cohort collection with a patient-matching search, and the cohort graph.
+The project page hosts the CohortCal leaderboard and per-model calibration, the diagnostic tasks with per-model breakdowns, the 29,884-cohort collection with a patient-matching search and the incidence tables of 20 cohorts, and the cohort graph.
 
 <p align="center">
 <img src="docs/site/leaderboard.png" width="49%" alt="CohortCal leaderboard with bootstrap intervals and the diagnostic-tasks table" />
 <img src="docs/site/model.png" width="49%" alt="One model: reliability, resolution by cohort size, breakdowns" />
 <img src="docs/site/task.png" width="49%" alt="One diagnostic-tasks row: AUROC by coding depth and horizon" />
-<img src="docs/site/episode.png" width="49%" alt="An agent episode with its tool calls and score" />
+<img src="docs/site/cohort.png" width="49%" alt="One of the 20 cohorts whose incidence table is public" />
 <img src="docs/site/cohorts.png" width="49%" alt="The cohort collection filtered to one age band, sex and condition" />
 <img src="docs/site/graph.png" width="49%" alt="One cohort and every legal move around it" />
 </p>
@@ -41,6 +41,8 @@ Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Mo
 | **Checkpoints** | Qwen3.5-9B and Qwen3.6-27B after the cold start, after CS-GRPO, and after CS-GRPO with $\psi$ | six model repositories, `cohortworld-qwen3.5-9b-*` and `cohortworld-qwen3.6-27b-*` |
 
 All released cohorts hold at least $k = 10$ participants, sizes are published as bands, and no individual-level record leaves UK Biobank. A pseudo-subject is a history and an index time drawn from a cohort, not a person's record.
+
+**The incidence labels are hidden.** On the dataset only 20 cohorts keep their rate tables, and the first 20 rows of the CohortCal train split keep their answers as examples. To evaluate a model or enter the leaderboard, send its predictions to the address and in the format the [dataset card](https://huggingface.co/datasets/Ziquan/cohort-world) gives. The environment's observations, the training rewards and every scorer here read those labels, so with the public data the environment serves only the 20 labelled cohorts and the scorers cannot run. The labels are available on request.
 
 ## The environment in one screen
 
@@ -79,13 +81,14 @@ export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 # model's revision, parser and flags; this prints the exact command for one of them
 $(python gen/reasoning_kwargs.py --serve qwen3.5-9b) --port 8000
 
+# the three entry points below score against the labels, which the public data hides (see above)
 # evaluate on the CohortThink unseen split
 reproduce/table4.sh http://localhost:8000/v1 qwen3.5-9b Qwen3.5-9B agent
 
 # Table 3
 reproduce/table3.sh http://localhost:8000/v1 qwen3.5-9b Qwen3.5-9B single
 
-# both tables from the paper's own model outputs, no model needed
+# both tables from the paper's own model outputs, no model needed (also needs the agent traces)
 reproduce/rescore.sh data/paper_outputs
 ```
 
@@ -114,9 +117,10 @@ tools/                  the release gate
 data/                   MANIFEST of the dataset on HuggingFace
 ```
 
-Data: https://huggingface.co/datasets/Ziquan/cohort-world (cohorts, CohortCal, task items, SFT
-demonstrations, and the model outputs behind both tables). Checkpoints: the six `Ziquan/cohortworld-*`
-model repositories. `reproduce/rescore.sh` re-scores the paper's own outputs without running a model.
+Data: https://huggingface.co/datasets/Ziquan/cohort-world (cohorts, CohortCal and task items with the
+incidence labels hidden, and the single-turn model outputs behind both tables). Checkpoints: the six
+`Ziquan/cohortworld-*` model repositories. `reproduce/rescore.sh` re-scores the paper's own outputs
+without running a model, given the labels and the agent traces, which are available on request.
 
 ## Ethics and scope
 
