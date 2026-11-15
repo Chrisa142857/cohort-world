@@ -2,12 +2,6 @@
 
 **Aligning real-world data-driven diagnostics and language models.**
 
-Ziquan Wei, Tingting Dan, Guorong Wu (University of North Carolina at Chapel Hill)
-
-NeurIPS 2026 Workshop on World Models for High-Stakes Health (WMHS), poster, non-archival.
-
-[**Project page**](https://ziquan-cohort-world.static.hf.space/) · [**Paper**](https://openreview.net/forum?id=rBTjac6Cp7) · [**Dataset**](https://huggingface.co/datasets/Ziquan/cohort-world) · [**Checkpoints**](https://huggingface.co/Ziquan)
-
 The project page hosts the CohortCal leaderboard and per-model calibration, the diagnostic tasks with per-model breakdowns, the 29,884-cohort collection with a patient-matching search and the incidence tables of 20 cohorts, and the cohort graph.
 
 <p align="center">
