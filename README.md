@@ -36,7 +36,6 @@ Paper: *CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Mo
 
 All released cohorts hold at least $k = 10$ participants, sizes are published as bands, and no individual-level record leaves UK Biobank. A pseudo-subject is a history and an index time drawn from a cohort, not a person's record.
 
-**The incidence labels are hidden.** On the dataset only 20 cohorts keep their rate tables, and the first 20 rows of the CohortCal train split keep their answers as examples. To evaluate a model or enter the leaderboard, send its predictions to the address and in the format the [dataset card](https://huggingface.co/datasets/Ziquan/cohort-world) gives. The environment's observations, the training rewards and every scorer here read those labels, so with the public data the environment serves only the 20 labelled cohorts and the scorers cannot run. The labels are available on request.
 
 ## The environment in one screen
 
@@ -67,7 +66,7 @@ pip install -r requirements-freeze.txt
 pip install --no-deps -e cohortworld_env -e cohortworld_internal -e cohortworld_locate -e cohortworld_delta -e cohortworld_phenocal
 
 # data from Hugging Face (see data/README.md)
-hf download Ziquan/cohort-world --repo-type dataset --local-dir data
+hf download xxx/cohort-world --repo-type dataset --local-dir data
 export CW_PANEL=$PWD/data/official CW_OFFICIAL=$PWD/data/official CW_SIDECAR=$PWD/data/official
 export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 
@@ -111,27 +110,14 @@ tools/                  the release gate
 data/                   MANIFEST of the dataset on HuggingFace
 ```
 
-Data: https://huggingface.co/datasets/Ziquan/cohort-world (cohorts, CohortCal and task items with the
+Data: https://huggingface.co/datasets/xxx/cohort-world (cohorts, CohortCal and task items with the
 incidence labels hidden, and the single-turn model outputs behind both tables). Checkpoints: the six
-`Ziquan/cohortworld-*` model repositories. `reproduce/rescore.sh` re-scores the paper's own outputs
+`xxx/cohortworld-*` model repositories. `reproduce/rescore.sh` re-scores the paper's own outputs
 without running a model, given the labels and the agent traces, which are available on request.
 
 ## Ethics and scope
 
 This work uses UK Biobank under an approved application. A number produced here is the incidence of a group a person matches and is not a personal prognosis; it carries UK Biobank's selection and needs recalibration before use on another population. Nothing in this repository is a clinical decision aid.
-
-## Citation
-
-```bibtex
-@inproceedings{wei2026cohortworld,
-  title     = {CohortWorld: Aligning Real-World Data-Driven Diagnostics and Language Models},
-  author    = {Wei, Ziquan and Dan, Tingting and Wu, Guorong},
-  booktitle = {NeurIPS 2026 Workshop on World Models for High-Stakes Health},
-  note      = {Non-archival},
-  year      = {2026},
-  url       = {https://openreview.net/forum?id=rBTjac6Cp7}
-}
-```
 
 ## License
 
