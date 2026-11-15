@@ -1,11 +1,11 @@
 # data/
 
 The data are not in this repository. They are on Hugging Face:
-**https://huggingface.co/datasets/Ziquan/cohort-world**. The dataset card there describes every
+**https://huggingface.co/datasets/xxx/cohort-world**. The dataset card there describes every
 file and the disclosure rules applied.
 
 ```bash
-hf download Ziquan/cohort-world --repo-type dataset --local-dir data
+hf download xxx/cohort-world --repo-type dataset --local-dir data
 export CW_PANEL=$PWD/data/official CW_OFFICIAL=$PWD/data/official CW_SIDECAR=$PWD/data/official
 export CW_PHENOCAL=$PWD/data/cohortcal CW_ITEMS=$PWD/data/items
 ```
